@@ -50,7 +50,9 @@ times = constr_file['time'].values*60
 print(times)
 
 ## Create directory for output
-dir_name = 'output'+args.animal+args.ear
+tag = args.animal+args.ear
+print(tag)
+dir_name = 'output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -138,7 +140,7 @@ plt.figure()
 posterior_samples_const_burnthin.plot_ci()
 
 ## save figure
-plt.savefig(dir_name+'/posterior_samples_const_ci.png')
+plt.savefig(dir_name+'/posterior_samples_const_ci_'+tag+'.png')
 
 ## Plot data and reconstructed data (constant diffusion coefficient case)
 plt.figure()
@@ -152,7 +154,7 @@ recon_data = A_const(posterior_samples_const_burnthin.funvals.mean()).reshape([l
 plot_time_series( times, locations, recon_data)
 
 ## save figure
-plt.savefig(dir_name+'/data_recon_const.png')
+plt.savefig(dir_name+'/data_recon_const_'+tag+'.png')
 
 ## Plot ESS (constant diffusion coefficient case)
 plt.figure()
@@ -160,11 +162,11 @@ plt.plot(posterior_samples_const_burnthin.compute_ess(), 'o')
 plt.title('ESS')
 
 ## save figure
-plt.savefig(dir_name+'/ESS_const.png')
+plt.savefig(dir_name+'/ESS_const_'+tag+'.png')
 
 
 ## save data
-np.savez(dir_name+'/posterior_samples_const.npz', posterior_samples_const.samples)
+np.savez(dir_name+'/posterior_samples_const_'+tag+'.npz', posterior_samples_const.samples)
 
 
 ### CASE 2: Varying in space diffusion coefficient
@@ -229,7 +231,7 @@ plt.figure()
 posterior_samples_var_burnthin.plot_ci()
 
 ## save figure
-plt.savefig(dir_name+'/posterior_samples_var_ci.png')
+plt.savefig(dir_name+'/posterior_samples_var_ci_'+tag+'.png')
 
 ## Plot data and reconstructed data (varying in space diffusion coefficient case)
 plt.figure()
@@ -243,7 +245,7 @@ recon_data = A_var(posterior_samples_var_burnthin.funvals.mean()).reshape([len(l
 plot_time_series( times, locations, recon_data)
 
 ## save figure
-plt.savefig(dir_name+'/data_recon_var.png')
+plt.savefig(dir_name+'/data_recon_var_'+tag+'.png')
 
 ## Plot ESS (varying in space diffusion coefficient case)
 plt.figure()
@@ -251,7 +253,7 @@ plt.plot(posterior_samples_var_burnthin.compute_ess())
 plt.title('ESS')
 
 ## save figure
-plt.savefig(dir_name+'/ESS_var.png')
+plt.savefig(dir_name+'/ESS_var_'+tag+'.png')
 
 ## save data
-np.savez(dir_name+'/posterior_samples_var.npz', posterior_samples_var.samples)
+np.savez(dir_name+'/posterior_samples_var_'+tag+'.npz', posterior_samples_var.samples)
