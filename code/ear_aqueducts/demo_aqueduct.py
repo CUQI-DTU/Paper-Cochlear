@@ -28,7 +28,7 @@ Parse = True
 
 if Parse:
     parser = argparse.ArgumentParser(description='run the ear aqueduct Bayesian model')
-    parser.add_argument('animal', metavar='animal', type=str, choices=['m1', 'm2', 'm3', 'm4', 'm5'], help='the animal to model')
+    parser.add_argument('animal', metavar='animal', type=str, choices=['m1', 'm2', 'm3', 'm4', 'm6'], help='the animal to model')
     parser.add_argument('ear', metavar='ear', type=str, choices=['l', 'r'], help='the ear to model')
     args = parser.parse_args()
 else:
