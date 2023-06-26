@@ -127,7 +127,7 @@ posterior_const = joint_const(y_const=data) # condition on y=y_obs
 my_sampler_const = MH(posterior_const, scale=10, x0=20)
 
 ## Sample (constant diffusion coefficient case)
-Ns_const = 100
+Ns_const = 10000
 Nb_const = int(Ns_const*0.3)  
 posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 
@@ -218,7 +218,7 @@ posterior_var = joint_var(y_var=data)
 my_sampler_var = CWMH(posterior_var,
     scale=20, x0=20*np.ones(G_D_var.par_dim))
 
-Ns_var = 100
+Ns_var = 10000
 Nb_var = int(Ns_var*0.3)
 posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 
