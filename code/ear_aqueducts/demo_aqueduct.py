@@ -18,7 +18,7 @@ from cuqi.distribution import Gaussian, JointDistribution, GMRF
 from cuqi.geometry import Continuous1D, KLExpansion, Discrete, MappedGeometry, Continuous2D, Image2D
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel, Model
-from cuqi.sampler import CWMH, MH
+from cuqi.sampler import CWMH, MH, NUTS
 from cuqi.array import CUQIarray
 from my_utils import plot_time_series
 np.random.seed(1)
@@ -44,13 +44,13 @@ print(locations)
 
 ## Read concentration file
 constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
-data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T
+data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
 print(data)
 times = constr_file['time'].values*60
 print(times)
 
 ## Create directory for output
-version = 'v2'
+version = 'v3'
 tag = args.animal+args.ear+version
 print(tag)
 dir_name = 'output'+tag
@@ -62,7 +62,7 @@ else:
 #%%
 ## Set PDE parameters
 L = 500
-n_grid = 100   # Number of solution nodes
+n_grid = 50   # Number of solution nodes
 h = L/(n_grid+1)   # Space step size
 grid = np.linspace(h, L-h, n_grid)
 
@@ -121,7 +121,7 @@ y_const = Gaussian(A_const(x_const), s_noise**2, geometry=G_cont2D)
 joint_const = JointDistribution(x_const, y_const)
 
 ## Wrap data in CUQIarray
-data = CUQIarray(data.ravel(), geometry=G_cont2D)
+#data = CUQIarray(data.ravel(), geometry=G_cont2D)
 
 # Posterior distribution (constant diffusion coefficient case)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
@@ -130,7 +130,7 @@ posterior_const = joint_const(y_const=data) # condition on y=y_obs
 my_sampler_const = MH(posterior_const, scale=10, x0=20)
 
 ## Sample (constant diffusion coefficient case)
-Ns_const = 50000
+Ns_const = 10
 Nb_const = int(Ns_const*0.3)  
 posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 
@@ -217,13 +217,12 @@ y_var = Gaussian(A_var(x_var), s_noise**2, geometry=G_cont2D)
 joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
+posterior_var.enable_FD()
+my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20, max_depth=20)
 
-my_sampler_var = CWMH(posterior_var,
-    scale=20, x0=20*np.ones(G_D_var.par_dim))
-
-Ns_var = 50000
+Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
-posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+posterior_samples_var = my_sampler_var.sample_adapt(Ns_var,50)
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
