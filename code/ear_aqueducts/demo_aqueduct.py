@@ -50,7 +50,7 @@ times = constr_file['time'].values*60
 print(times)
 
 ## Create directory for output
-version = 'v3'
+version = 'v4'
 tag = args.animal+args.ear+version
 print(tag)
 dir_name = 'output'+tag
@@ -218,11 +218,11 @@ joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
 posterior_var.enable_FD()
-my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20, max_depth=20)
+my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
 
-Ns_var = 1000
+Ns_var = 10000000
 Nb_var = int(Ns_var*0.3)
-posterior_samples_var = my_sampler_var.sample_adapt(Ns_var,50)
+posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
