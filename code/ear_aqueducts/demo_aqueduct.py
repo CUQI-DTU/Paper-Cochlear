@@ -24,7 +24,7 @@ from my_utils import plot_time_series
 np.random.seed(1)
 
 ## Parse command line arguments
-Parse = False
+Parse = True
 
 if Parse:
     parser = argparse.ArgumentParser(description='run the ear aqueduct Bayesian model')
