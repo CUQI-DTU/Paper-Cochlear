@@ -151,7 +151,7 @@ plt.sca(ax[0])
 plot_time_series( times, locations, data.reshape([len(locations), len(times)]) )
 
 plt.sca(ax[1])
-recon_data = A_const(posterior_samples_const_burnthin.funvals.mean()).reshape([len(locations), len(times)]) 
+recon_data = A_const(posterior_samples_const_burnthin.funvals.mean(), is_par=False).reshape([len(locations), len(times)]) 
 plot_time_series( times, locations, recon_data)
 
 ## save figure
@@ -241,7 +241,7 @@ plt.sca(ax[0])
 plot_time_series( times, locations, data.reshape([len(locations), len(times)]) )
 
 plt.sca(ax[1])
-recon_data = A_var(posterior_samples_var_burnthin.funvals.mean()).reshape([len(locations), len(times)])
+recon_data = A_var(posterior_samples_var_burnthin.funvals.mean(),is_par=False).reshape([len(locations), len(times)])
 plot_time_series( times, locations, recon_data)
 
 ## save figure
