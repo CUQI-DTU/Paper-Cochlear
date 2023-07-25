@@ -141,6 +141,7 @@ if args.sampler == 'MH':
     my_sampler_const = MH(posterior_const, scale=10, x0=20)
     posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 elif args.sampler == 'NUTS':
+    posterior_const.enable_FD()
     my_sampler_const = NUTS(posterior_const, x0=20)
     posterior_samples_const = my_sampler_const.sample_adapt(
         Ns_const, int(Ns_const*0.1)) 
@@ -230,7 +231,6 @@ y_var = Gaussian(A_var(x_var), s_noise**2, geometry=G_cont2D)
 joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
-posterior_var.enable_FD()
 
 Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
@@ -239,6 +239,7 @@ if args.sampler == 'MH':
     my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
     posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 elif args.sampler == 'NUTS':
+    posterior_var.enable_FD()
     my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
     posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
 else:
