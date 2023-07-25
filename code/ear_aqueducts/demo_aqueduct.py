@@ -134,18 +134,18 @@ joint_const = JointDistribution(x_const, y_const)
 # Posterior distribution (constant diffusion coefficient case)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
-## Create sampler (constant diffusion coefficient case)
+## Create sampler (constant diffusion coefficient case) and sample
+Ns_const = 1000
+Nb_const = int(Ns_const*0.3) 
 if args.sampler == 'MH':
     my_sampler_const = MH(posterior_const, scale=10, x0=20)
+    posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 elif args.sampler == 'NUTS':
     my_sampler_const = NUTS(posterior_const, x0=20)
+    posterior_samples_const = my_sampler_const.sample_adapt(
+        Ns_const, int(Ns_const*0.1)) 
 else:
     raise Exception('Unsuppported sampler')
-
-## Sample (constant diffusion coefficient case)
-Ns_const = 1000
-Nb_const = int(Ns_const*0.3)  
-posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 
 posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 
