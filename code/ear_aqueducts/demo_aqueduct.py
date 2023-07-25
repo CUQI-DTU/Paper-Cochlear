@@ -31,13 +31,16 @@ if Parse:
     parser.add_argument('animal', metavar='animal', type=str, choices=['m1', 'm2', 'm3', 'm4', 'm6'], help='the animal to model')
     parser.add_argument('ear', metavar='ear', type=str, choices=['l', 'r'], help='the ear to model')
     parser.add_argument('version', metavar='version', type=str, help='the version of the model to run')
+    parser.add_argument('sampler', metavar='sampler', type=str, choices=['CWMH', 'MH', 'NUTS'], help='the sampler to use')
     args = parser.parse_args()
 else:
     class args:
         animal = 'm2'
         ear = 'r'
         version = 'v10_temp'
-    print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear))
+        sampler = 'MH'
+    print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear)+
+          ', version = '+str(args.version)+', sampler = '+str(args.sampler))
 
 ## Read distance file
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
@@ -53,7 +56,7 @@ print(times)
 
 ## Create directory for output
 version = args.version
-tag = args.animal+args.ear+version
+tag = args.animal+args.ear+args.sampler+version
 print(tag)
 dir_name = 'output'+tag
 if not os.path.exists(dir_name):
@@ -132,10 +135,15 @@ joint_const = JointDistribution(x_const, y_const)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
 ## Create sampler (constant diffusion coefficient case)
-my_sampler_const = MH(posterior_const, scale=10, x0=20)
+if args.sampler == 'MH':
+    my_sampler_const = MH(posterior_const, scale=10, x0=20)
+elif args.sampler == 'NUTS':
+    my_sampler_const = NUTS(posterior_const, x0=20)
+else:
+    raise Exception('Unsuppported sampler')
 
 ## Sample (constant diffusion coefficient case)
-Ns_const = 10
+Ns_const = 1000
 Nb_const = int(Ns_const*0.3)  
 posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
 
@@ -223,9 +231,15 @@ joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
 posterior_var.enable_FD()
-my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
 
-Ns_var = 1000000
+if args.sampler == 'MH':
+    my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+elif args.sampler == 'NUTS':
+    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+else:
+    raise Exception('Unsuppported sampler')
+
+Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
 posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 
