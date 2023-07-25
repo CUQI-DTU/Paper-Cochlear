@@ -232,16 +232,17 @@ joint_var = JointDistribution(x_var, y_var)
 posterior_var = joint_var(y_var=data) 
 posterior_var.enable_FD()
 
-if args.sampler == 'MH':
-    my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
-elif args.sampler == 'NUTS':
-    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
-else:
-    raise Exception('Unsuppported sampler')
-
 Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
-posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+
+if args.sampler == 'MH':
+    my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+elif args.sampler == 'NUTS':
+    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
+else:
+    raise Exception('Unsuppported sampler')
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
