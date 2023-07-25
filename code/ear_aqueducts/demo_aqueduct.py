@@ -61,6 +61,9 @@ if not os.path.exists(dir_name):
 else:
     raise Exception('Output directory already exists')
 
+## Save the current script in the output directory
+os.system('cp '+__file__+' '+dir_name+'/')
+
 #%%
 ## Set PDE parameters
 L = 500
