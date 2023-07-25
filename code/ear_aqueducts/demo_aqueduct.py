@@ -30,11 +30,13 @@ if Parse:
     parser = argparse.ArgumentParser(description='run the ear aqueduct Bayesian model')
     parser.add_argument('animal', metavar='animal', type=str, choices=['m1', 'm2', 'm3', 'm4', 'm6'], help='the animal to model')
     parser.add_argument('ear', metavar='ear', type=str, choices=['l', 'r'], help='the ear to model')
+    parser.add_argument('version', metavar='version', type=str, help='the version of the model to run')
     args = parser.parse_args()
 else:
     class args:
         animal = 'm2'
         ear = 'r'
+        version = 'v10_temp'
     print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear))
 
 ## Read distance file
@@ -50,7 +52,7 @@ times = constr_file['time'].values*60
 print(times)
 
 ## Create directory for output
-version = 'v4'
+version = args.version
 tag = args.animal+args.ear+version
 print(tag)
 dir_name = 'output'+tag

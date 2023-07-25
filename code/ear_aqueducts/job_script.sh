@@ -34,4 +34,4 @@ module load scipy/1.7.3-python-3.10.2
 ###pip3 install --upgrade pip
 ###pip3 install -e /zhome/0f/0/161811/tools/CUQIpy
 
-python3 demo_aqueduct.py arg1 arg2
+python3 demo_aqueduct.py arg1 arg2 arg3
