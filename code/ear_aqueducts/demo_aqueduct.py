@@ -64,7 +64,7 @@ else:
 #%%
 ## Set PDE parameters
 L = 500
-n_grid = 50   # Number of solution nodes
+n_grid = 100   # Number of solution nodes
 h = L/(n_grid+1)   # Space step size
 grid = np.linspace(h, L-h, n_grid)
 
