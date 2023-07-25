@@ -220,7 +220,7 @@ posterior_var = joint_var(y_var=data)
 posterior_var.enable_FD()
 my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
 
-Ns_var = 10000000
+Ns_var = 1000000
 Nb_var = int(Ns_var*0.3)
 posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 
