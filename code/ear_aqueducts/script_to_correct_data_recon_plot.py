@@ -18,19 +18,18 @@ version_list = ['v5']
 sampler_list = ['']
 version_list_labels = ['gridpts_100_MH', 'gridpts_100_NUTS']
 
-for ear in earlist:
-    for animal in animallist:
-        for i, version in enumerate(version_list):
+for i, version in enumerate(version_list):
+    # Create directory in figures for output and raise an error if it already exists
+    out_dir_name = './figures/'+sampler_list[i]+version
+    if not os.path.exists(out_dir_name):
+        os.makedirs(out_dir_name)
+    else:
+        raise Exception('Output directory already exists')
+    
+    for ear in earlist:
+        for animal in animallist:
             tag = animal+ear+sampler_list[i]+version
             print(tag)
-
-            # Create directory in figures for output and raise an error if it already exists
-            out_dir_name = './figures/'+sampler_list[i]+version
-            if not os.path.exists(out_dir_name):
-                os.makedirs(out_dir_name)
-            else:
-                raise Exception('Output directory already exists')
-
             ## Read data
             ## Read distance file
             dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_distances.csv')
