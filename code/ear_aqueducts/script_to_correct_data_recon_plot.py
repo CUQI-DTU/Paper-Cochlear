@@ -8,16 +8,28 @@ from cuqi.geometry import Continuous1D, KLExpansion, Discrete, MappedGeometry, C
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel, Model
 from cuqi.samples import Samples 
+import os
 
 earlist = ['l', 'r']
 animallist = ['m1', 'm2', 'm3', 'm4', 'm6']
-version_list = ['', 'v2', 'v3', 'v4']
-version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
+#version_list = ['', 'v2', 'v3', 'v4']
+#version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
+version_list = ['v5']
+sampler_list = ['']
+version_list_labels = ['gridpts_100_MH', 'gridpts_100_NUTS']
 
 for ear in earlist:
     for animal in animallist:
         for i, version in enumerate(version_list):
-            tag = animal+ear+version
+            tag = animal+ear+sampler_list[i]+version
+            print(tag)
+
+            # Create directory in figures for output and raise an error if it already exists
+            out_dir_name = './figures/'+sampler_list[i]+version
+            if not os.path.exists(out_dir_name):
+                os.makedirs(out_dir_name)
+            else:
+                raise Exception('Output directory already exists')
 
             ## Read data
             ## Read distance file
@@ -176,7 +188,7 @@ for ear in earlist:
             #plt.sca(axsBottom)
             samples_var.plot_trace([0, 5, 15] ,axes = axsBottom)
             
-            fig.savefig('figures'+'/results_'+tag+'.png')
+            fig.savefig(out_dir_name+'/results_'+tag+'.png')
 
             #fig, ax = plt.subplots(1, 2, figsize=(12, 4))
             #
