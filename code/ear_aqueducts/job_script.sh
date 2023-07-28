@@ -9,9 +9,9 @@
 ### -- specify that the cores must be on the same host -- 
 #BSUB -R "span[hosts=1]"
 ### -- specify that we need 4GB of memory per core/slot -- 
-#BSUB -R "rusage[mem=1GB]"
+#BSUB -R "rusage[mem=4GB]"
 ### -- specify that we want the job to get killed if it exceeds 3 GB per core/slot -- 
-#BSUB -M 1GB
+#BSUB -M 4GB
 ### -- set walltime limit: hh:mm -- 
 #BSUB -W 10:00 
 ### -- set the email address -- 
@@ -34,4 +34,4 @@ module load scipy/1.7.3-python-3.10.2
 ###pip3 install --upgrade pip
 ###pip3 install -e /zhome/0f/0/161811/tools/CUQIpy
 
-python3 demo_aqueduct.py arg1 arg2
+python3 demo_aqueduct.py arg1 arg2 arg3 arg4

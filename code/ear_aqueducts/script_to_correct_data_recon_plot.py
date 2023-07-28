@@ -8,17 +8,28 @@ from cuqi.geometry import Continuous1D, KLExpansion, Discrete, MappedGeometry, C
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel, Model
 from cuqi.samples import Samples 
+import os
 
 earlist = ['l', 'r']
 animallist = ['m1', 'm2', 'm3', 'm4', 'm6']
-version_list = ['', 'v2', 'v3', 'v4']
-version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
+#version_list = ['', 'v2', 'v3', 'v4']
+#version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
+version_list = ['v8']
+sampler_list = ['NUTS']
+version_list_labels = ['v8_NUTS']
 
-for ear in earlist:
-    for animal in animallist:
-        for i, version in enumerate(version_list):
-            tag = animal+ear+version
-
+for i, version in enumerate(version_list):
+    # Create directory in figures for output and raise an error if it already exists
+    out_dir_name = './figures/'+sampler_list[i]+version
+    if not os.path.exists(out_dir_name):
+        os.makedirs(out_dir_name)
+    else:
+        raise Exception('Output directory already exists')
+    
+    for ear in earlist:
+        for animal in animallist:
+            tag = animal+ear+sampler_list[i]+version
+            print(tag)
             ## Read data
             ## Read distance file
             dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_distances.csv')
@@ -85,7 +96,10 @@ for ear in earlist:
             A_const = PDEModel(PDE_const, range_geometry=G_cont2D, domain_geometry=G_D_const)
             
             # grid for the diffusion coefficient
-            grid_c = np.linspace(0, L, n_grid+1, endpoint=True)
+            n_grid_c = 20
+            hs = L/(n_grid_c+1) 
+            grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+            grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
             
             ## Source term (varying in space diffusion coefficient case)
             def g_var(c, tau_current):
@@ -103,6 +117,7 @@ for ear in earlist:
             D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
             
             def PDE_form_var(c, tau_current):
+                c = np.interp(grid_c_fine, grid_c, c)
                 return (D_c_var(c), g_var(c, tau_current), initial_condition)
             
             
@@ -121,6 +136,8 @@ for ear in earlist:
 
             ## read samples
             dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts/output'+tag
+            #dir_name = 'output'+tag
+            
 
             try:
                 samples_const = Samples(np.load(dir_name+'/posterior_samples_const_'+tag+'.npz')['arr_0'],
@@ -163,6 +180,7 @@ for ear in earlist:
             plt.sca(axsTop[1,1])
             samples_const.funvals.plot_ci()
             plt.title('Constant c')
+            plt.title('Posterior samples ci (constant c)\n ESS = '+str(samples_const.compute_ess()))
             
             plt.sca(axsTop[2,0])
             samples_var.funvals.plot_ci()
@@ -176,7 +194,7 @@ for ear in earlist:
             #plt.sca(axsBottom)
             samples_var.plot_trace([0, 5, 15] ,axes = axsBottom)
             
-            fig.savefig('figures'+'/results_'+tag+'.png')
+            fig.savefig(out_dir_name+'/results_'+tag+'.png')
 
             #fig, ax = plt.subplots(1, 2, figsize=(12, 4))
             #

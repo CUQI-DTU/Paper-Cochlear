@@ -30,12 +30,17 @@ if Parse:
     parser = argparse.ArgumentParser(description='run the ear aqueduct Bayesian model')
     parser.add_argument('animal', metavar='animal', type=str, choices=['m1', 'm2', 'm3', 'm4', 'm6'], help='the animal to model')
     parser.add_argument('ear', metavar='ear', type=str, choices=['l', 'r'], help='the ear to model')
+    parser.add_argument('version', metavar='version', type=str, help='the version of the model to run')
+    parser.add_argument('sampler', metavar='sampler', type=str, choices=['CWMH', 'MH', 'NUTS'], help='the sampler to use')
     args = parser.parse_args()
 else:
     class args:
-        animal = 'm2'
-        ear = 'r'
-    print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear))
+        animal = 'm1'
+        ear = 'l'
+        version = 'v10_temp'
+        sampler = 'MH'
+    print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear)+
+          ', version = '+str(args.version)+', sampler = '+str(args.sampler))
 
 ## Read distance file
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
@@ -50,8 +55,8 @@ times = constr_file['time'].values*60
 print(times)
 
 ## Create directory for output
-version = 'v4'
-tag = args.animal+args.ear+version
+version = args.version
+tag = args.animal+args.ear+args.sampler+version
 print(tag)
 dir_name = 'output'+tag
 if not os.path.exists(dir_name):
@@ -59,10 +64,13 @@ if not os.path.exists(dir_name):
 else:
     raise Exception('Output directory already exists')
 
+## Save the current script in the output directory
+os.system('cp '+__file__+' '+dir_name+'/')
+
 #%%
 ## Set PDE parameters
 L = 500
-n_grid = 50   # Number of solution nodes
+n_grid = 100   # Number of solution nodes
 h = L/(n_grid+1)   # Space step size
 grid = np.linspace(h, L-h, n_grid)
 
@@ -126,19 +134,26 @@ joint_const = JointDistribution(x_const, y_const)
 # Posterior distribution (constant diffusion coefficient case)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
-## Create sampler (constant diffusion coefficient case)
-my_sampler_const = MH(posterior_const, scale=10, x0=20)
-
-## Sample (constant diffusion coefficient case)
-Ns_const = 10
-Nb_const = int(Ns_const*0.3)  
-posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
+## Create sampler (constant diffusion coefficient case) and sample
+Ns_const = 100
+Nb_const = int(Ns_const*0.3) 
+if args.sampler == 'MH':
+    my_sampler_const = MH(posterior_const, scale=10, x0=20)
+    posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
+elif args.sampler == 'NUTS':
+    posterior_const.enable_FD()
+    my_sampler_const = NUTS(posterior_const, x0=20)
+    posterior_samples_const = my_sampler_const.sample_adapt(
+        Ns_const, int(Ns_const*0.1)) 
+else:
+    raise Exception('Unsuppported sampler')
 
 posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 
 ## plot posterior samples ci (constant diffusion coefficient case)
 plt.figure()
 posterior_samples_const_burnthin.plot_ci()
+plt.title('Posterior samples ci (constant diffusion coefficient case)\n ESS = '+str(posterior_samples_const_burnthin.compute_ess()))
 
 ## save figure
 plt.savefig(dir_name+'/posterior_samples_const_ci_'+tag+'.png')
@@ -173,7 +188,10 @@ np.savez(dir_name+'/posterior_samples_const_'+tag+'.npz', posterior_samples_cons
 ### CASE 2: Varying in space diffusion coefficient
 
 # grid for the diffusion coefficient
-grid_c = np.linspace(0, L, n_grid+1, endpoint=True)
+n_grid_c = 20
+hs = L/(n_grid_c+1) 
+grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
 
 ## Source term (varying in space diffusion coefficient case)
 def g_var(c, tau_current):
@@ -191,6 +209,7 @@ Dx /= h # FD derivative matrix
 D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
 
 def PDE_form_var(c, tau_current):
+    c = np.interp(grid_c_fine, grid_c, c)
     return (D_c_var(c), g_var(c, tau_current), initial_condition)
 
 
@@ -217,12 +236,19 @@ y_var = Gaussian(A_var(x_var), s_noise**2, geometry=G_cont2D)
 joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
-posterior_var.enable_FD()
-my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
 
-Ns_var = 10000000
+Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
-posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+
+if args.sampler == 'MH':
+    my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+elif args.sampler == 'NUTS':
+    posterior_var.enable_FD()
+    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
+else:
+    raise Exception('Unsuppported sampler')
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
