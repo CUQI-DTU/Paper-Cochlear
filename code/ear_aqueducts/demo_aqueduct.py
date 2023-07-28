@@ -135,7 +135,7 @@ joint_const = JointDistribution(x_const, y_const)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
 ## Create sampler (constant diffusion coefficient case) and sample
-Ns_const = 1000
+Ns_const = 100
 Nb_const = int(Ns_const*0.3) 
 if args.sampler == 'MH':
     my_sampler_const = MH(posterior_const, scale=10, x0=20)
@@ -237,7 +237,7 @@ joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
 
-Ns_var = 200000
+Ns_var = 1000
 Nb_var = int(Ns_var*0.3)
 
 if args.sampler == 'MH':
