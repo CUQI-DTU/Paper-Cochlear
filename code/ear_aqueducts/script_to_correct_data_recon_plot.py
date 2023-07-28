@@ -16,7 +16,7 @@ animallist = ['m1', 'm2', 'm3', 'm4', 'm6']
 #version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
 version_list = ['v8']
 sampler_list = ['NUTS']
-version_list_labels = ['v7_NUTS']
+version_list_labels = ['v8_NUTS']
 
 for i, version in enumerate(version_list):
     # Create directory in figures for output and raise an error if it already exists
