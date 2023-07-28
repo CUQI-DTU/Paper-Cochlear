@@ -35,8 +35,8 @@ if Parse:
     args = parser.parse_args()
 else:
     class args:
-        animal = 'm2'
-        ear = 'r'
+        animal = 'm1'
+        ear = 'l'
         version = 'v10_temp'
         sampler = 'MH'
     print('Using default arguments: animal = '+str(args.animal)+', ear = '+str(args.ear)+
@@ -153,6 +153,7 @@ posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 ## plot posterior samples ci (constant diffusion coefficient case)
 plt.figure()
 posterior_samples_const_burnthin.plot_ci()
+plt.title('Posterior samples ci (constant diffusion coefficient case)\n ESS = '+str(posterior_samples_const_burnthin.compute_ess()))
 
 ## save figure
 plt.savefig(dir_name+'/posterior_samples_const_ci_'+tag+'.png')
@@ -187,7 +188,10 @@ np.savez(dir_name+'/posterior_samples_const_'+tag+'.npz', posterior_samples_cons
 ### CASE 2: Varying in space diffusion coefficient
 
 # grid for the diffusion coefficient
-grid_c = np.linspace(0, L, n_grid+1, endpoint=True)
+n_grid_c = 20
+hs = L/(n_grid_c+1) 
+grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
 
 ## Source term (varying in space diffusion coefficient case)
 def g_var(c, tau_current):
@@ -205,6 +209,7 @@ Dx /= h # FD derivative matrix
 D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
 
 def PDE_form_var(c, tau_current):
+    c = np.interp(grid_c_fine, grid_c, c)
     return (D_c_var(c), g_var(c, tau_current), initial_condition)
 
 
@@ -232,7 +237,7 @@ joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
 
-Ns_var = 1000
+Ns_var = 200000
 Nb_var = int(Ns_var*0.3)
 
 if args.sampler == 'MH':
