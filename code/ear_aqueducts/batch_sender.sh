@@ -1,6 +1,6 @@
 #!/bin/bash
-RESULT_VERSION="v6"
-SAMPLER="NUTS"
+RESULT_VERSION="v7"
+SAMPLER="MH"
 
 ./sender.sh 'm1' 'l' $RESULT_VERSION $SAMPLER
 ./sender.sh 'm1' 'r' $RESULT_VERSION $SAMPLER
