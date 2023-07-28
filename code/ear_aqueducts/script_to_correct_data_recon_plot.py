@@ -14,9 +14,9 @@ earlist = ['l', 'r']
 animallist = ['m1', 'm2', 'm3', 'm4', 'm6']
 #version_list = ['', 'v2', 'v3', 'v4']
 #version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
-version_list = ['v5']
-sampler_list = ['']
-version_list_labels = ['gridpts_100_MH', 'gridpts_100_NUTS']
+version_list = ['v8']
+sampler_list = ['NUTS']
+version_list_labels = ['v7_NUTS']
 
 for i, version in enumerate(version_list):
     # Create directory in figures for output and raise an error if it already exists
@@ -96,7 +96,10 @@ for i, version in enumerate(version_list):
             A_const = PDEModel(PDE_const, range_geometry=G_cont2D, domain_geometry=G_D_const)
             
             # grid for the diffusion coefficient
-            grid_c = np.linspace(0, L, n_grid+1, endpoint=True)
+            n_grid_c = 20
+            hs = L/(n_grid_c+1) 
+            grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+            grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
             
             ## Source term (varying in space diffusion coefficient case)
             def g_var(c, tau_current):
@@ -114,6 +117,7 @@ for i, version in enumerate(version_list):
             D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
             
             def PDE_form_var(c, tau_current):
+                c = np.interp(grid_c_fine, grid_c, c)
                 return (D_c_var(c), g_var(c, tau_current), initial_condition)
             
             
@@ -132,6 +136,8 @@ for i, version in enumerate(version_list):
 
             ## read samples
             dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts/output'+tag
+            #dir_name = 'output'+tag
+            
 
             try:
                 samples_const = Samples(np.load(dir_name+'/posterior_samples_const_'+tag+'.npz')['arr_0'],
@@ -174,6 +180,7 @@ for i, version in enumerate(version_list):
             plt.sca(axsTop[1,1])
             samples_const.funvals.plot_ci()
             plt.title('Constant c')
+            plt.title('Posterior samples ci (constant c)\n ESS = '+str(samples_const.compute_ess()))
             
             plt.sca(axsTop[2,0])
             samples_var.funvals.plot_ci()
