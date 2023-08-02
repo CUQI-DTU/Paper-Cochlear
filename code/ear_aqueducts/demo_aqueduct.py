@@ -18,6 +18,7 @@ from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel, Model
 from cuqi.sampler import CWMH, MH, NUTS
 from cuqi.array import CUQIarray
+from cuqi.problem import BayesianProblem
 from my_utils import plot_time_series
 np.random.seed(1)
 
@@ -33,11 +34,11 @@ parser.add_argument('-ear', metavar='ear', type=str, choices=[
                     default='l',
                     help='the ear to model')
 parser.add_argument('-version', metavar='version', type=str,
-                    default='v10_temp',
+                    default='v_temp',
                     help='the version of the model to run')
 parser.add_argument('-sampler', metavar='sampler', type=str, choices=[
                     'CWMH', 'MH', 'NUTS'],
-                    default='MH',
+                    default='NUTS',
                     help='the sampler to use')
 parser.add_argument('-unknown_par_type',
                     metavar='unknown_par_type',
@@ -45,27 +46,37 @@ parser.add_argument('-unknown_par_type',
                                        'smooth',
                                        'step',
                                        ],
-                    default='constant',
+                    default='smooth',
                     help='Type of unknown parameter, diffusion coefficient')
 parser.add_argument('-unknown_par_value', metavar='unknown_par_value',
-                    type=list,
-                    default=[500],
+                     nargs='*',
+                     type=float,
+                    default=[40,400],
                     help='Value of unknown parameter, diffusion coefficient')
 parser.add_argument('-data_type', metavar='data_type', type=str,
                     choices=[
                         'real', 'synthetic'],
-                    default='synthetic',
+                    default='real',
                     help='Type of data, real or synthetic')
 parser.add_argument('-inference_type', metavar='inference_type', type=str,
                     choices=[
                         'constant', 'heterogeneous', 'both'],
-                    default='constant',
+                    default='both',
                     help='Type of inference, constant or heterogeneous coefficients')
-args = parser.parse_args()
+parser.add_argument('-Ns_const', metavar='Ns_const', type=int,
+                    default=100,
+                    help='Number of samples for constant inference')
+parser.add_argument('-Ns_var', metavar='Ns_var', type=int,
+                    default=100,
+                    help='Number of samples for heterogeneous inference')
+args = parser.parse_known_args()[0]
 
 print('Arguments: animal = '+str(args.animal)+', ear = '+str(args.ear) +
       ', version = '+str(args.version)+', sampler = '+str(args.sampler))
 
+# temp
+print(args.unknown_par_value)
+# end temp
 ## Read distance file
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
 locations = dist_file['distance microns'].values[:5]
@@ -97,10 +108,10 @@ else:
     raise Exception('Unknown parameter value not supported')
 
 ## Create directory for output
-version = args.version
 tag = args.animal+args.ear+args.sampler+args.unknown_par_type+\
     unknown_par_value_str+args.data_type+\
     args.inference_type+\
+    str(args.Ns_const)+str(args.Ns_var)+\
     version
 print(tag)
 dir_name = 'output'+tag
@@ -216,6 +227,7 @@ if args.data_type == 'synthetic':
         exact_x = np.zeros(n_grid_c)
         exact_x[0:n_grid_c//2] = args.unknown_par_value[0]
         exact_x[n_grid_c//2:] = args.unknown_par_value[1]
+        print('Exact parameter: ', exact_x)
         exact_data = A_var(exact_x)
 
     # if the unknown parameter is varying in space (smooth function)
@@ -224,6 +236,7 @@ if args.data_type == 'synthetic':
         high = args.unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
         exact_data = A_var(exact_x)
+    exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
 
 ## Noise standard deviation 
 if args.data_type == 'synthetic':
@@ -258,6 +271,7 @@ if args.data_type == 'synthetic':
     elif args.unknown_par_type == 'step' or args.unknown_par_type == 'smooth':
         data = y_var(x_var=exact_x).sample()
 
+data = CUQIarray(data, is_par=False, geometry=G_cont2D)
 ### CASE 1 SAMPLING: constant diffusion coefficient
 ## Joint distribution (constant diffusion coefficient case)
 joint_const = JointDistribution(x_const, y_const)
@@ -269,7 +283,7 @@ joint_const = JointDistribution(x_const, y_const)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
 ## Create sampler (constant diffusion coefficient case) and sample
-Ns_const = 100
+Ns_const = args.Ns_const
 Nb_const = int(Ns_const*0.3) 
 if args.sampler == 'MH':
     my_sampler_const = MH(posterior_const, scale=10, x0=20)
@@ -324,7 +338,7 @@ joint_var = JointDistribution(x_var, y_var)
 
 posterior_var = joint_var(y_var=data) 
 
-Ns_var = 100
+Ns_var = args.Ns_var
 Nb_var = int(Ns_var*0.3)
 
 if args.sampler == 'MH':
@@ -337,13 +351,20 @@ elif args.sampler == 'NUTS':
 else:
     raise Exception('Unsuppported sampler')
 #import cuqi
-#BP = cuqi.problem.BayesianProblem(x_var, y_var).set_data(data)
+BP = BayesianProblem(x_var, y_var).set_data(y_var=data)
+#MAP_var = BP.MAP()
+#print('MAP_var = ', MAP_var)
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
 ## plot posterior samples ci (varying in space diffusion coefficient case)
 plt.figure()
-posterior_samples_var_burnthin.plot_ci()
+ci_var_args = {}
+if args.data_type == 'synthetic' and args.unknown_par_type != 'constant':
+    ci_var_args['exact'] = np.sqrt(exact_x) #TEMP
+posterior_samples_var_burnthin.plot_ci(**ci_var_args)
+
+#G_D_var.plot(MAP_var)
 
 ## save figure
 plt.savefig(dir_name+'/posterior_samples_var_ci_'+tag+'.png')
