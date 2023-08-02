@@ -46,17 +46,17 @@ parser.add_argument('-unknown_par_type',
                                        'smooth',
                                        'step',
                                        ],
-                    default='smooth',
+                    default='constant',
                     help='Type of unknown parameter, diffusion coefficient')
 parser.add_argument('-unknown_par_value', metavar='unknown_par_value',
                      nargs='*',
                      type=float,
-                    default=[40,400],
+                    default=[100],
                     help='Value of unknown parameter, diffusion coefficient')
 parser.add_argument('-data_type', metavar='data_type', type=str,
                     choices=[
                         'real', 'synthetic'],
-                    default='real',
+                    default='synthetic',
                     help='Type of data, real or synthetic')
 parser.add_argument('-inference_type', metavar='inference_type', type=str,
                     choices=[
@@ -64,11 +64,15 @@ parser.add_argument('-inference_type', metavar='inference_type', type=str,
                     default='both',
                     help='Type of inference, constant or heterogeneous coefficients')
 parser.add_argument('-Ns_const', metavar='Ns_const', type=int,
-                    default=100,
+                    default=300,
                     help='Number of samples for constant inference')
 parser.add_argument('-Ns_var', metavar='Ns_var', type=int,
-                    default=100,
+                    default=10,
                     help='Number of samples for heterogeneous inference')
+parser.add_argument('-noise_level', metavar='noise_level', 
+                    type=float,
+                    default=0.1,
+                    help='Noise level for data')
 args = parser.parse_known_args()[0]
 
 print('Arguments: animal = '+str(args.animal)+', ear = '+str(args.ear) +
@@ -112,6 +116,7 @@ tag = args.animal+args.ear+args.sampler+args.unknown_par_type+\
     unknown_par_value_str+args.data_type+\
     args.inference_type+\
     str(args.Ns_const)+str(args.Ns_var)+\
+    str(args.noise_level)+\
     version
 print(tag)
 dir_name = 'output'+tag
@@ -178,7 +183,7 @@ A_const = PDEModel(PDE_const, range_geometry=G_cont2D, domain_geometry=G_D_const
 
 # grid for the diffusion coefficient
 n_grid_c = 20
-hs = L/(n_grid_c+1) 
+h_c = L/(n_grid_c+1) 
 grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
 grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
 
@@ -208,7 +213,7 @@ PDE_var = TimeDependentLinearPDE(PDE_form_var, tau, grid_sol=grid,
 
 
 # Domain geometry
-G_D_var =  MappedGeometry( Continuous1D(grid_c),  map=lambda x: x**2 )
+G_D_var =  MappedGeometry( Continuous1D(grid_c),  map=lambda x: x**2 )#TEMP: one map
 
 A_var = PDEModel(PDE_var, range_geometry=G_cont2D, domain_geometry=G_D_var)
 
@@ -220,6 +225,7 @@ if args.data_type == 'synthetic':
     # if the unknown parameter is constant
     if args.unknown_par_type == 'constant':
         exact_x = args.unknown_par_value[0]
+        x_geom = G_D_const
         exact_data = A_const(args.unknown_par_value[0])
     
     # if the unknown parameter is varying in space (step function)
@@ -227,24 +233,28 @@ if args.data_type == 'synthetic':
         exact_x = np.zeros(n_grid_c)
         exact_x[0:n_grid_c//2] = args.unknown_par_value[0]
         exact_x[n_grid_c//2:] = args.unknown_par_value[1]
+        x_geom = G_D_var
         print('Exact parameter: ', exact_x)
         exact_data = A_var(exact_x)
+
 
     # if the unknown parameter is varying in space (smooth function)
     elif args.unknown_par_type == 'smooth':
         low = args.unknown_par_value[0]
         high = args.unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
+        x_geom = G_D_var
         exact_data = A_var(exact_x)
-    exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
+    exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
+    #exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
 
 ## Noise standard deviation 
 if args.data_type == 'synthetic':
-    s_noise = 0.1 \
+    s_noise = args.noise_level \
               *np.linalg.norm(exact_data) \
               *np.sqrt(1/G_cont2D.par_dim) 
 elif args.data_type == 'real':
-    s_noise = 0.1 \
+    s_noise = args.noise_level \
               *np.linalg.norm(data) \
               *np.sqrt(1/G_cont2D.par_dim) 
 
@@ -256,7 +266,7 @@ x_const = Gaussian(np.sqrt(400), 100, geometry=G_D_const)
 y_const = Gaussian(A_const(x_const), s_noise**2, geometry=G_cont2D)
 
 ### CASE 2: creating the prior and the data distribution
-x_var = GMRF( np.ones(G_D_var.par_dim),2, geometry=G_D_var, bc_type='neumann')
+x_var = GMRF( np.ones(G_D_var.par_dim),2, geometry=G_D_var, bc_type='neumann') #TEMP: fix loc and prec
 #GMRF( np.ones(G_D.par_dim), 1, geometry=G_D)
 #LMRF(x_zero, scale=0.002)
 
@@ -270,8 +280,8 @@ if args.data_type == 'synthetic':
         data = y_const(x_const=exact_x).sample()
     elif args.unknown_par_type == 'step' or args.unknown_par_type == 'smooth':
         data = y_var(x_var=exact_x).sample()
-
-data = CUQIarray(data, is_par=False, geometry=G_cont2D)
+    data = data.to_numpy()
+#data = CUQIarray(data, is_par=False, geometry=G_cont2D)
 ### CASE 1 SAMPLING: constant diffusion coefficient
 ## Joint distribution (constant diffusion coefficient case)
 joint_const = JointDistribution(x_const, y_const)
@@ -292,7 +302,7 @@ elif args.sampler == 'NUTS':
     posterior_const.enable_FD()
     my_sampler_const = NUTS(posterior_const, x0=20)
     posterior_samples_const = my_sampler_const.sample_adapt(
-        Ns_const, int(Ns_const*0.1)) 
+        Ns_const, int(Ns_const*0.1)+10) 
 else:
     raise Exception('Unsuppported sampler')
 
@@ -361,7 +371,7 @@ posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 plt.figure()
 ci_var_args = {}
 if args.data_type == 'synthetic' and args.unknown_par_type != 'constant':
-    ci_var_args['exact'] = np.sqrt(exact_x) #TEMP
+    ci_var_args['exact'] = exact_x #TEMP
 posterior_samples_var_burnthin.plot_ci(**ci_var_args)
 
 #G_D_var.plot(MAP_var)
