@@ -3,7 +3,7 @@
 ### -- specify queue -- 
 #BSUB -q hpc
 ### -- set the job Name -- 
-#BSUB -J Job_arg1arg2arg3
+#BSUB -J Job_
 ### -- ask for number of cores (default: 1) -- 
 #BSUB -n 1 
 ### -- specify that the cores must be on the same host -- 
@@ -24,8 +24,8 @@
 #BSUB -N 
 ### -- Specify the output and error file. %J is the job-id -- 
 ### -- -o and -e mean append, -oo and -eo mean overwrite -- 
-#BSUB -o Output_arg1arg2arg3_%J.out 
-#BSUB -e Output_arg1arg2arg3_%J.err 
+#BSUB -o Output_%J.out 
+#BSUB -e Output_%J.err 
 
 # here follow the commands you want to execute with input.in as the input file
 module load python3/3.10.2 
