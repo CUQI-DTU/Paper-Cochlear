@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def plot_time_series(times, locations, data):
 
     # Plot data
-    color = ['r', 'g', 'b', 'k', 'm']
+    color = ['r', 'g', 'b', 'k', 'm', 'c']
     legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
     lines = []
     for i in range(len(locations)):
