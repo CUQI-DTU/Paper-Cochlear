@@ -128,12 +128,12 @@ if len(args.add_data_pts) > 1:
     raise Exception('Only one data point can be added')
 
 ## Create directory for output
-tag = args.animal+args.ear+args.sampler+args.unknown_par_type+\
-    unknown_par_value_str+args.data_type+\
-    args.inference_type+\
-    str(args.Ns_const)+str(args.Ns_var)+\
-    str(args.noise_level)+\
-    version +\
+tag = args.animal+'_'+args.ear+'_'+args.sampler+'_'+args.unknown_par_type+'_'+\
+    unknown_par_value_str+'_'+args.data_type+'_'+\
+    args.inference_type+'_'+\
+    str(args.Ns_const)+'_'+str(args.Ns_var)+'_'+\
+    str(args.noise_level)+'_'+\
+    version+'_'+\
     str(args.add_data_pts[0])
 
 print(tag)
