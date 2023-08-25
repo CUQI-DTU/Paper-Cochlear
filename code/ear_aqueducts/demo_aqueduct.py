@@ -73,17 +73,28 @@ parser.add_argument('-noise_level', metavar='noise_level',
                     type=float,
                     default=0.1,
                     help='Noise level for data')
+parser.add_argument('-add_data_pts', metavar='add_data_pts',
+                    nargs='*',
+                    type=float,
+                    default=[])
 args = parser.parse_known_args()[0]
 
 print('Arguments: animal = '+str(args.animal)+', ear = '+str(args.ear) +
       ', version = '+str(args.version)+', sampler = '+str(args.sampler))
+
+# Assert if real data, you cannot add data points
+if args.data_type == 'real' and len(args.add_data_pts) > 0:
+    raise Exception('Cannot add data points to real data')
 
 # temp
 print(args.unknown_par_value)
 # end temp
 ## Read distance file
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
-locations = dist_file['distance microns'].values[:5]
+locations_real = dist_file['distance microns'].values[:5]
+print(locations_real)
+print(args.add_data_pts)
+locations = np.concatenate((locations_real, np.array(args.add_data_pts)))
 print(locations)
 
 ## Read concentration file and times
@@ -91,7 +102,7 @@ constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.
 times = constr_file['time'].values*60
 print(times)
 data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
-data_bc = data.reshape([len(locations), len(times)])[0,:]
+data_bc = data.reshape([len(locations_real), len(times)])[0,:]
 if args.data_type == 'synthetic':
     # Do not use real data
     data = None
