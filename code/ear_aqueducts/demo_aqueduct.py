@@ -122,13 +122,20 @@ elif len(args.unknown_par_value) == 2:
 else:
     raise Exception('Unknown parameter value not supported')
 
+# raise exception if more than one data point is added, unable to
+# create tag
+if len(args.add_data_pts) > 1:
+    raise Exception('Only one data point can be added')
+
 ## Create directory for output
 tag = args.animal+args.ear+args.sampler+args.unknown_par_type+\
     unknown_par_value_str+args.data_type+\
     args.inference_type+\
     str(args.Ns_const)+str(args.Ns_var)+\
     str(args.noise_level)+\
-    version
+    version +\
+    str(args.add_data_pts[0])
+
 print(tag)
 dir_name = 'output'+tag
 if not os.path.exists(dir_name):
