@@ -5,7 +5,7 @@ try:
 except:
     # append local dill path in cluster
     import sys
-    sys.path.append('../../../tools')
+    sys.path.append('../../../../tools')
     import dill as pickle
 
 def plot_time_series(times, locations, data):
