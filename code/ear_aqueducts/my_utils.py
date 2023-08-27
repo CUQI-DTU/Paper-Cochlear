@@ -1,7 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import dill as pickle
-#import pickle
+try:
+    import dill as pickle
+except:
+    # append local dill path in cluster
+    import sys
+    sys.path.append('/../../../tools')
+    import dill as pickle
 
 def plot_time_series(times, locations, data):
 
