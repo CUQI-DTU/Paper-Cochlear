@@ -10,25 +10,81 @@ from cuqi.model import PDEModel, Model
 from cuqi.samples import Samples 
 import os
 
-earlist = ['l', 'r']
-animallist = ['m1', 'm2', 'm3', 'm4', 'm6']
+earlist = ['l']
+animallist = ['m1']
 #version_list = ['', 'v2', 'v3', 'v4']
 #version_list_labels = ['CWMH_10000', 'CWMH_50000', 'NUTS_1000', 'MH_1000000']
-version_list = ['v8']
-sampler_list = ['NUTS']
-version_list_labels = ['v8_NUTS']
+version_list = ['v_aug2_c', 'v_aug2_c']
+
+
+# Do not loop over the following lists
+sampler_list = ['NUTS', 'NUTS']
+unknown_par_type_list = ['constant', 'smooth']
+unknown_par_value_list = [[100.0], [400.0, 1200.0]]
+data_type_list = ['synthetic', 'synthetic']
+inference_type_list = ['both', 'both']
+Ns_list = [[1000, 1000], [1000, 1000]]
+noise_level_list = [0.1, 0.1]
+
+#version_list_labels = ['']
+
+global_expr_id = -1
 
 for i, version in enumerate(version_list):
-    # Create directory in figures for output and raise an error if it already exists
-    out_dir_name = './figures/'+sampler_list[i]+version
-    if not os.path.exists(out_dir_name):
-        os.makedirs(out_dir_name)
-    else:
-        raise Exception('Output directory already exists')
     
     for ear in earlist:
         for animal in animallist:
-            tag = animal+ear+sampler_list[i]+version
+            global_expr_id += 1
+            tag = ''
+            upvl = unknown_par_value_list[global_expr_id]
+            if len(upvl) == 1:
+                unknown_par_value_str = str(upvl[0])
+            elif len(upvl) == 2:
+                unknown_par_value_str = str(upvl[0])+\
+                    '_'+str(upvl[1])
+            else:
+                raise Exception('Unknown parameter value not supported')
+            
+            ## Create directory for output
+            tag = animal+ear+sampler_list[global_expr_id]\
+                +unknown_par_type_list[global_expr_id]\
+                +unknown_par_value_str\
+                +data_type_list[global_expr_id]\
+                +inference_type_list[global_expr_id]\
+                +str(Ns_list[global_expr_id][0])\
+                +str(Ns_list[global_expr_id][1])\
+                +str(noise_level_list[global_expr_id])\
+                +version
+
+            # Create directory in figures for output and raise an error if it already exists
+            out_dir_name = './figures/'+tag
+            if not os.path.exists(out_dir_name):
+                os.makedirs(out_dir_name)
+            else:
+                raise Exception('Output directory already exists')
+    
+
+            # If the data is not provided, we create it
+            if data_type_list[global_expr_id] == 'synthetic':
+                # if the unknown parameter is constant
+                if unknown_par_type_list[global_expr_id] == 'constant':
+                    exact_x = unknown_par_value_list[global_expr_id][0]
+                    x_geom = G_D_const
+                    exact_data = A_const(unknown_par_value_list[global_expr_id][0])
+                
+            
+                # if the unknown parameter is varying in space (smooth function)
+                elif data_type_list[global_expr_id] == 'smooth':
+                    low = unknown_par_value_list[global_expr_id][0]
+                    high = unknown_par_value_list[global_expr_id][1]
+                    exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
+                    x_geom = G_D_var
+                    exact_data = A_var(exact_x)
+                exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
+    
+
+
+            #tag = animal+ear+sampler_list[i]+version
             print(tag)
             ## Read data
             ## Read distance file
@@ -156,7 +212,7 @@ for i, version in enumerate(version_list):
             
             fig = plt.figure( figsize=(12, 14))
             #fig.title = tag+version_list_labels[i]
-            fig.suptitle(tag+version_list_labels[i])
+            fig.suptitle(tag)
             #fig.set_label(tag+version_list_labels[i])
             subfigs = fig.subfigures(2, 1)
             
@@ -165,7 +221,7 @@ for i, version in enumerate(version_list):
             
             plt.sca(axsTop[0,0])
             plot_time_series( times, locations, data.reshape([len(locations), len(times)]) )
-            plt.title('Data, case '+tag+' '+version_list_labels[i])
+            plt.title('Data, case '+tag)
             
             plt.sca(axsTop[0,1])
             recon_data_const = A_const(samples_const.funvals.mean(), is_par=False).reshape([len(locations), len(times)])

@@ -13,13 +13,16 @@ import warnings
 import os
 
 from cuqi.distribution import Gaussian, JointDistribution, GMRF
-from cuqi.geometry import Continuous1D, KLExpansion, Discrete, MappedGeometry, Continuous2D, Image2D
+from cuqi.geometry import Continuous1D, KLExpansion, Discrete,\
+    MappedGeometry, Continuous2D, Image2D
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel, Model
 from cuqi.sampler import CWMH, MH, NUTS
 from cuqi.array import CUQIarray
 from cuqi.problem import BayesianProblem
-from my_utils import plot_time_series
+from my_utils import plot_time_series, create_experiment_tag,\
+    plot_experiment, process_experiment_par, read_experiment_data,\
+    save_experiment_data
 np.random.seed(1)
 
 ## Parse command line arguments
@@ -73,17 +76,21 @@ parser.add_argument('-noise_level', metavar='noise_level',
                     type=float,
                     default=0.1,
                     help='Noise level for data')
+parser.add_argument('-add_data_pts', metavar='add_data_pts',
+                    nargs='*',
+                    type=float,
+                    default=[])
 args = parser.parse_known_args()[0]
 
-print('Arguments: animal = '+str(args.animal)+', ear = '+str(args.ear) +
-      ', version = '+str(args.version)+', sampler = '+str(args.sampler))
+## Process arguments
+process_experiment_par(args)
 
-# temp
-print(args.unknown_par_value)
-# end temp
 ## Read distance file
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
-locations = dist_file['distance microns'].values[:5]
+locations_real = dist_file['distance microns'].values[:5]
+print(locations_real)
+print(args.add_data_pts)
+locations = np.concatenate((locations_real, np.array(args.add_data_pts)))
 print(locations)
 
 ## Read concentration file and times
@@ -91,7 +98,7 @@ constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.
 times = constr_file['time'].values*60
 print(times)
 data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
-data_bc = data.reshape([len(locations), len(times)])[0,:]
+data_bc = data.reshape([len(locations_real), len(times)])[0,:]
 if args.data_type == 'synthetic':
     # Do not use real data
     data = None
@@ -99,26 +106,10 @@ else:
     # Print real data
     print(data)
 
-## Create directory for output
-version = args.version
-if len(args.unknown_par_value) == 0:
-    unknown_par_value_str = 'smooth_field'
-elif len(args.unknown_par_value) == 1:
-    unknown_par_value_str = str(args.unknown_par_value[0])
-elif len(args.unknown_par_value) == 2:
-    unknown_par_value_str = str(args.unknown_par_value[0])+\
-        '_'+str(args.unknown_par_value[1])
-else:
-    raise Exception('Unknown parameter value not supported')
-
-## Create directory for output
-tag = args.animal+args.ear+args.sampler+args.unknown_par_type+\
-    unknown_par_value_str+args.data_type+\
-    args.inference_type+\
-    str(args.Ns_const)+str(args.Ns_var)+\
-    str(args.noise_level)+\
-    version
+tag = create_experiment_tag(args)
 print(tag)
+
+## Create output directory
 dir_name = 'output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
@@ -226,7 +217,8 @@ if args.data_type == 'synthetic':
     if args.unknown_par_type == 'constant':
         exact_x = args.unknown_par_value[0]
         x_geom = G_D_const
-        exact_data = A_const(args.unknown_par_value[0])
+        exact_x = CUQIarray(args.unknown_par_value[0], geometry=x_geom, is_par=False)
+        exact_data = A_const(exact_x)
     
     # if the unknown parameter is varying in space (step function)
     elif args.unknown_par_type == 'step':
@@ -235,8 +227,8 @@ if args.data_type == 'synthetic':
         exact_x[n_grid_c//2:] = args.unknown_par_value[1]
         x_geom = G_D_var
         print('Exact parameter: ', exact_x)
+        exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
         exact_data = A_var(exact_x)
-
 
     # if the unknown parameter is varying in space (smooth function)
     elif args.unknown_par_type == 'smooth':
@@ -244,9 +236,11 @@ if args.data_type == 'synthetic':
         high = args.unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
         x_geom = G_D_var
+        exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)        
         exact_data = A_var(exact_x)
-    exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
-    #exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
+    # TODO: Need to be removed later (when model output type
+    # is fixed)
+    exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
 
 ## Noise standard deviation 
 if args.data_type == 'synthetic':
@@ -280,14 +274,13 @@ if args.data_type == 'synthetic':
         data = y_const(x_const=exact_x).sample()
     elif args.unknown_par_type == 'step' or args.unknown_par_type == 'smooth':
         data = y_var(x_var=exact_x).sample()
+
+    # TODO: Need to be fixed
     data = data.to_numpy()
-#data = CUQIarray(data, is_par=False, geometry=G_cont2D)
+
 ### CASE 1 SAMPLING: constant diffusion coefficient
 ## Joint distribution (constant diffusion coefficient case)
 joint_const = JointDistribution(x_const, y_const)
-
-## Wrap data in CUQIarray
-#data = CUQIarray(data.ravel(), geometry=G_cont2D)
 
 # Posterior distribution (constant diffusion coefficient case)
 posterior_const = joint_const(y_const=data) # condition on y=y_obs
@@ -308,40 +301,6 @@ else:
 
 posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 
-## plot posterior samples ci (constant diffusion coefficient case)
-plt.figure()
-posterior_samples_const_burnthin.plot_ci()
-plt.title('Posterior samples ci (constant diffusion coefficient case)\n ESS = '+str(posterior_samples_const_burnthin.compute_ess()))
-
-## save figure
-plt.savefig(dir_name+'/posterior_samples_const_ci_'+tag+'.png')
-
-## Plot data and reconstructed data (constant diffusion coefficient case)
-plt.figure()
-fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-
-plt.sca(ax[0]) 
-plot_time_series( times, locations, data.reshape([len(locations), len(times)]) )
-
-plt.sca(ax[1])
-recon_data = A_const(posterior_samples_const_burnthin.funvals.mean(), is_par=False).reshape([len(locations), len(times)]) 
-plot_time_series( times, locations, recon_data)
-
-## save figure
-plt.savefig(dir_name+'/data_recon_const_'+tag+'.png')
-
-## Plot ESS (constant diffusion coefficient case)
-plt.figure()
-plt.plot(posterior_samples_const_burnthin.compute_ess(), 'o')
-plt.title('ESS')
-
-## save figure
-plt.savefig(dir_name+'/ESS_const_'+tag+'.png')
-
-
-## save data
-np.savez(dir_name+'/posterior_samples_const_'+tag+'.npz', posterior_samples_const.samples)
-
 
 ### CASE 2 SAMPLING: varying in space diffusion coefficient
 joint_var = JointDistribution(x_var, y_var)
@@ -360,46 +319,47 @@ elif args.sampler == 'NUTS':
     posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
 else:
     raise Exception('Unsuppported sampler')
-#import cuqi
+
 BP = BayesianProblem(x_var, y_var).set_data(y_var=data)
-#MAP_var = BP.MAP()
-#print('MAP_var = ', MAP_var)
 
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
-## plot posterior samples ci (varying in space diffusion coefficient case)
-plt.figure()
-ci_var_args = {}
-if args.data_type == 'synthetic' and args.unknown_par_type != 'constant':
-    ci_var_args['exact'] = exact_x #TEMP
-posterior_samples_var_burnthin.plot_ci(**ci_var_args)
+# Plot constant diffusion coefficient case
+mean_recon_data_const = \
+    A_const(posterior_samples_const_burnthin.funvals.mean(), is_par=False).\
+        reshape([len(locations), len(times)])
+fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+                data.reshape([len(locations), len(times)]),
+                mean_recon_data_const,
+                posterior_samples_const_burnthin,
+                args, locations, times)
+# Save figure
+fig.savefig(dir_name+'/experiment_const'+tag+'.png')
 
-#G_D_var.plot(MAP_var)
+# Plot varying in space diffusion coefficient case
+mean_recon_data_var = \
+    A_var(posterior_samples_var_burnthin.funvals.mean(), is_par=False).\
+        reshape([len(locations), len(times)])
+fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+                data.reshape([len(locations), len(times)]), 
+                mean_recon_data_var,
+                posterior_samples_var_burnthin,
+                args, locations, times)
+# Save figure
+fig.savefig(dir_name+'/experiment_var'+tag+'.png')
+    
+# Save constant diffusion coefficient case
+save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+                     data.reshape([len(locations), len(times)]),
+                     mean_recon_data_const.reshape(
+                         [len(locations), len(times)]),
+                     posterior_samples_const_burnthin,
+                     args, locations, times)
 
-## save figure
-plt.savefig(dir_name+'/posterior_samples_var_ci_'+tag+'.png')
-
-## Plot data and reconstructed data (varying in space diffusion coefficient case)
-plt.figure()
-fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-
-plt.sca(ax[0])
-plot_time_series( times, locations, data.reshape([len(locations), len(times)]) )
-
-plt.sca(ax[1])
-recon_data = A_var(posterior_samples_var_burnthin.funvals.mean(),is_par=False).reshape([len(locations), len(times)])
-plot_time_series( times, locations, recon_data)
-
-## save figure
-plt.savefig(dir_name+'/data_recon_var_'+tag+'.png')
-
-## Plot ESS (varying in space diffusion coefficient case)
-plt.figure()
-plt.plot(posterior_samples_var_burnthin.compute_ess())
-plt.title('ESS')
-
-## save figure
-plt.savefig(dir_name+'/ESS_var_'+tag+'.png')
-
-## save data
-np.savez(dir_name+'/posterior_samples_var_'+tag+'.npz', posterior_samples_var.samples)
+# Save varying in space diffusion coefficient case
+save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+                     data.reshape([len(locations), len(times)]),
+                     mean_recon_data_var.reshape(
+                         [len(locations), len(times)]),
+                     posterior_samples_var_burnthin,
+                     args, locations, times)
