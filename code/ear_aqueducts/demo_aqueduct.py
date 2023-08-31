@@ -238,8 +238,9 @@ if args.data_type == 'synthetic':
         x_geom = G_D_var
         exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)        
         exact_data = A_var(exact_x)
-
-    #exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
+    # TODO: Need to be removed later (when model output type
+    # is fixed)
+    exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
 
 ## Noise standard deviation 
 if args.data_type == 'synthetic':
