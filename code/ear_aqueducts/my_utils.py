@@ -50,30 +50,48 @@ def read_experiment_data(dir_name, tag, const=True):
         name_str = 'var'
     with open(dir_name +'/output'+ tag+'/'+tag+'_'+name_str+'.pkl', 'rb') as f:
         data_dict = pickle.load(f)
-    return data_dict['exact'], data_dict['exact_data'], data_dict['data'],\
-        data_dict['mean_recon_data'], data_dict['samples'],\
-        data_dict['experiment_par'], data_dict['locations'], data_dict['times']
+    return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
                     samples, experiment_par, locations, times):
     """Method to plot the numerical experiment results."""
-    # Create tag 
+    # Create tag
     tag = create_experiment_tag(experiment_par)
 
-    # Expr type (const or var))
-    const_inf = True if samples.geometry.par_dim == 1 else False 
+    # Expr type (const or var)
+    const_inf = True if samples.geometry.par_dim == 1 else False
+    const_true_x = True if exact.geometry.par_dim == 1 else False
+
+    # Set up that depdneds on the whether inference is constant or variable
+    # and whether true parameter is constant or variable:
+    # a. Number of rows in bottom subfigure
+    axsBottom_rows= 3 if const_inf else 3 
+    # b. Set exact_for_plot to None if inferred parameter and true parameter
+    # are of different geometries
+    exact_for_plot = exact if const_true_x==const_inf else None
+    # Hight ratio of top and bottom subfigures
+    height_ratios = [1, 1] if const_inf else [1, 1]
+    # Trace index list
+    trace_idx_list = [0] if const_inf else [0, 5, 15]
+    # Marker
+    marker = 'o' if const_true_x else ''
 
     # Create figure: 
-    fig = plt.figure( figsize=(12, 14))
-    fig.suptitle(tag)
+    fig = plt.figure(figsize=(12, 14), layout='constrained')
 
-    subfigs = fig.subfigures(2, 1)
-            
-    axsTop = subfigs[0].subplots(3, 2)
-    axsBottom = subfigs[1].subplots(3, 2)
-                
+    subfigs = fig.subfigures(2, 1, height_ratios=height_ratios)
+
+    axsTop = subfigs[0].subplots(3, 2,
+        gridspec_kw=dict(left=0.1, right=0.9,
+                         bottom=0.1, top=0.9,
+                         hspace=0.5, wspace=0.5))
+    axsBottom = subfigs[1].subplots(axsBottom_rows, 2,
+        gridspec_kw=dict(left=0.1, right=0.9,
+                         bottom=0.1, top=0.96,
+                         hspace=0.5, wspace=0.5))
+
     # Add super title
-    plt.suptitle('Experiment results: '+tag)
+    subfigs[0].suptitle('Experiment results: '+tag)
 
     # Plot exact data
     plt.sca(axsTop[0, 0])
@@ -89,10 +107,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     plt.sca(axsTop[1, 0])
     plot_time_series(times, locations, mean_recon_data)
     plt.title('Mean reconstructed data')
-    
+
     # Plot cridible intervals
     plt.sca(axsTop[1, 1])
-    samples.funvals.plot_ci(exact = exact)
+    samples.funvals.plot_ci(exact = exact_for_plot)
     # If inference type is not constant, plot data locations as vertical lines
     if not const_inf:
         for loc in locations:
@@ -102,11 +120,15 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     # Plot ESS
     plt.sca(axsTop[2, 0])
     ESS_list = np.array(samples.compute_ess()) 
-    plt.plot(ESS_list)
+    plt.plot(ESS_list, marker=marker)
     plt.title('ESS')
 
+    # Plot exact
+    plt.sca(axsTop[2, 1])
+    exact.plot(marker=marker) 
+    plt.title('Exact solution')
+
     # Plot trace
-    trace_idx_list = [0] if const_inf else [0, 5, 15]
     samples.plot_trace(trace_idx_list, axes=axsBottom)
 
     return fig
