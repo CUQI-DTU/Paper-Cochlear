@@ -217,7 +217,8 @@ if args.data_type == 'synthetic':
     if args.unknown_par_type == 'constant':
         exact_x = args.unknown_par_value[0]
         x_geom = G_D_const
-        exact_data = A_const(args.unknown_par_value[0])
+        exact_x = CUQIarray(args.unknown_par_value[0], geometry=x_geom, is_par=False)
+        exact_data = A_const(exact_x)
     
     # if the unknown parameter is varying in space (step function)
     elif args.unknown_par_type == 'step':
@@ -226,8 +227,8 @@ if args.data_type == 'synthetic':
         exact_x[n_grid_c//2:] = args.unknown_par_value[1]
         x_geom = G_D_var
         print('Exact parameter: ', exact_x)
+        exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
         exact_data = A_var(exact_x)
-
 
     # if the unknown parameter is varying in space (smooth function)
     elif args.unknown_par_type == 'smooth':
@@ -235,8 +236,9 @@ if args.data_type == 'synthetic':
         high = args.unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
         x_geom = G_D_var
+        exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)        
         exact_data = A_var(exact_x)
-    exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
+
     #exact_data = CUQIarray(exact_data, geometry=G_cont2D, is_par=False)
 
 ## Noise standard deviation 
@@ -271,6 +273,8 @@ if args.data_type == 'synthetic':
         data = y_const(x_const=exact_x).sample()
     elif args.unknown_par_type == 'step' or args.unknown_par_type == 'smooth':
         data = y_var(x_var=exact_x).sample()
+
+    # TODO: Need to be fixed
     data = data.to_numpy()
 
 ### CASE 1 SAMPLING: constant diffusion coefficient
@@ -322,9 +326,9 @@ posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 # Plot constant diffusion coefficient case
 mean_recon_data_const = \
     A_const(posterior_samples_const_burnthin.funvals.mean(), is_par=False).\
-        reshape([len(locations_real), len(times)])
-fig = plot_experiment(exact_x, exact_data.reshape([len(locations_real), len(times)]),
-                data.reshape([len(locations_real), len(times)]),
+        reshape([len(locations), len(times)])
+fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+                data.reshape([len(locations), len(times)]),
                 mean_recon_data_const,
                 posterior_samples_const_burnthin,
                 args, locations, times)
@@ -334,9 +338,9 @@ fig.savefig(dir_name+'/experiment_const'+tag+'.png')
 # Plot varying in space diffusion coefficient case
 mean_recon_data_var = \
     A_var(posterior_samples_var_burnthin.funvals.mean(), is_par=False).\
-        reshape([len(locations_real), len(times)])
-fig = plot_experiment(exact_x, exact_data.reshape([len(locations_real), len(times)]),
-                data.reshape([len(locations_real), len(times)]), 
+        reshape([len(locations), len(times)])
+fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+                data.reshape([len(locations), len(times)]), 
                 mean_recon_data_var,
                 posterior_samples_var_burnthin,
                 args, locations, times)
@@ -344,17 +348,17 @@ fig = plot_experiment(exact_x, exact_data.reshape([len(locations_real), len(time
 fig.savefig(dir_name+'/experiment_var'+tag+'.png')
     
 # Save constant diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations_real), len(times)]),
-                     data.reshape([len(locations_real), len(times)]),
+save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+                     data.reshape([len(locations), len(times)]),
                      mean_recon_data_const.reshape(
-                         [len(locations_real), len(times)]),
+                         [len(locations), len(times)]),
                      posterior_samples_const_burnthin,
                      args, locations, times)
 
 # Save varying in space diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations_real), len(times)]),
-                     data.reshape([len(locations_real), len(times)]),
+save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+                     data.reshape([len(locations), len(times)]),
                      mean_recon_data_var.reshape(
-                         [len(locations_real), len(times)]),
+                         [len(locations), len(times)]),
                      posterior_samples_var_burnthin,
                      args, locations, times)
