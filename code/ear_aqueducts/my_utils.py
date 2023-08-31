@@ -8,6 +8,9 @@ except:
     sys.path.append('../../../../tools')
     import dill as pickle
 
+# Print dill version
+print('dill version: ', pickle.__version__)
+
 def plot_time_series(times, locations, data):
 
     # Plot data
