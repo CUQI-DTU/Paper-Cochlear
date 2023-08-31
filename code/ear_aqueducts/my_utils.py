@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from cuqi.array import CUQIarray
 try:
     import dill as pickle
 except:
@@ -34,13 +35,28 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
     else:
         name_str = 'var'
 
+    # convert exact to array and save its geometry
+    exact_geometry = exact.geometry
+    exact_is_par = exact.is_par
+    exact = exact.to_numpy()
+
+    # convert exact_data to array and save its geometry
+    exact_data_geometry = exact_data.geometry
+    exact_data_is_par = exact_data.is_par
+    exact_data = exact_data.to_numpy()
 
     # Save data in pickle file named with tag
     tag = create_experiment_tag(experiment_par)
-    data_dict = {'exact': exact, 'exact_data': exact_data, 'data': data,
-                'mean_recon_data': mean_recon_data, 'samples': samples,
-                'experiment_par': experiment_par, 'locations': locations,
-                'times': times}
+    data_dict = {'exact': exact,
+                 'exact_geometry': exact_geometry,
+                 'exact_is_par': exact_is_par,
+                 'exact_data': exact_data,
+                 'exact_data_geometry': exact_data_geometry,
+                 'exact_data_is_par': exact_data_is_par,
+                 'data': data,
+                 'mean_recon_data': mean_recon_data, 'samples': samples,
+                 'experiment_par': experiment_par, 'locations': locations,
+                 'times': times}
 
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
@@ -53,6 +69,25 @@ def read_experiment_data(dir_name, tag, const=True):
         name_str = 'var'
     with open(dir_name +'/output'+ tag+'/'+tag+'_'+name_str+'.pkl', 'rb') as f:
         data_dict = pickle.load(f)
+
+    # Convert exact to CUQIarray with geometry
+    exact = CUQIarray(data_dict['exact'], 
+                      geometry=data_dict['exact_geometry'],
+                      is_par=data_dict['exact_is_par'])
+    data_dict['exact'] = exact
+    # drop geometry and is_par
+    data_dict.pop('exact_geometry')
+    data_dict.pop('exact_is_par')
+
+    # Convert exact_data to CUQIarray with geometry
+    exact_data = CUQIarray(data_dict['exact_data'], 
+                           geometry=data_dict['exact_data_geometry'],
+                           is_par=data_dict['exact_data_is_par'])
+    data_dict['exact_data'] = exact_data
+    # drop geometry and is_par
+    data_dict.pop('exact_data_geometry')
+    data_dict.pop('exact_data_is_par')
+
     return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
