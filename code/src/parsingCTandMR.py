@@ -66,3 +66,16 @@ def loadear_CA_ST(datadir, ID):
     time, distances, concentrations = parse_combine_CA_ST(signalsfile, distancefile)
     
     return time, distances, concentrations
+
+def combine_CA_ST(datadir, savetodir, ID):
+    time, distances, concentrations = loadear_CA_ST(datadir, ID)
+    ROIs = concentrations.columns
+
+    distances_df = pd.DataFrame.from_dict({'ROI': ROIs, 'distance': distances})
+    concentrations.insert(0, 'time', time)
+
+    savetofilebase = savetodir + ID
+    concentrations.to_csv(savetofilebase + '_parsed.csv', index=False)
+    distances_df.to_csv(savetofilebase + '_distances.csv', index=False)
+
+    return concentrations, distances_df
