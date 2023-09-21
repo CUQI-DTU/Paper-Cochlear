@@ -17,13 +17,13 @@ args_animal = 'm1'
 args_ear = 'l'
 
 # ADDITIONAL PARAMETERS
-factor = 1 # factor for refining the grid and the time steps
+factor = .5 # factor for refining the grid and the time steps
 Pec = 10 # Peclet number
 c_2_max = 100 # Maximum diffusion coefficient
 c_2_min = 100 # Minimum diffusion coefficient
 args_unknown_par_type = 'constant' # Type of diffusivity profile: 
                                    #'constant', 'step', 'smooth'
-manufactured = True # If True, use a manufactured solution
+manufactured = False # If True, use a manufactured solution
                      # to verify the implementation
 
 # READ ANIMAL DATA, (LOCATION)
@@ -160,7 +160,7 @@ if manufactured:
 else:
 
     tau_max = 30*60 # Final time in sec
-    cfl = 5/factor # The cfl condition to have a stable solution
+    cfl = 4/factor # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
     dt_approx = cfl*h**2 # Defining approximate time step size
     n_tau = int(tau_max/dt_approx)+1 # Number of time steps
@@ -173,9 +173,10 @@ else:
         def g_const(c, tau_current):
             f_array = np.zeros(n_grid)
             # exact_sol(0, tau_current)*(-2*c/h**2 + a/h)
-            #f_array[0] = c/h**2*np.interp(tau_current, times, data_bc)
-            f_array[0] = -np.interp(tau_current, times, data_bc)*(-2*c/h**2 - -1*a/h)
-            f_array[1] = -np.interp(tau_current, times, data_bc)*(c/h**2)
+            f_array[0] = c/h**2*np.interp(tau_current, times, data_bc)
+            
+            #f_array[0] = -np.interp(tau_current, times, data_bc)*(-2*c/h**2 - -1*a/h)
+            #f_array[1] = -np.interp(tau_current, times, data_bc)*(c/h**2)
             #f_array[-2] = -np.interp(tau_current, times, data_bc_end)*(c/h**2 - a/h)
             #f_array[-1] = -np.interp(tau_current, times, data_bc_end)*(-2*c/h**2 - (-1)*a/h)
             return f_array
