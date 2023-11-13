@@ -110,7 +110,7 @@ tag = create_experiment_tag(args)
 print(tag)
 
 ## Create output directory
-dir_name = 'output'+tag
+dir_name = 'results/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
