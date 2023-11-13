@@ -315,8 +315,8 @@ if args.sampler == 'MH':
     posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
 elif args.sampler == 'NUTS':
     posterior_var.enable_FD()
-    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
-    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
+    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20, max_depth=10)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.05))
 else:
     raise Exception('Unsuppported sampler')
 
