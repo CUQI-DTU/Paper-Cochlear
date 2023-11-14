@@ -325,10 +325,15 @@ BP = BayesianProblem(x_var, y_var).set_data(y_var=data)
 posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
 # Plot constant diffusion coefficient case
+# if exact_x is not defined, set it to None
+exact_x = exact_x if 'exact_x' in locals() else None
 mean_recon_data_const = \
     A_const(posterior_samples_const_burnthin.funvals.mean(), is_par=False).\
         reshape([len(locations), len(times)])
-fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+
+# if exact_data is not defined, set it to None
+exact_data = exact_data.reshape([len(locations), len(times)]) if 'exact_data' in locals() else None
+fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]),
                 mean_recon_data_const,
                 posterior_samples_const_burnthin,
@@ -340,7 +345,7 @@ fig.savefig(dir_name+'/experiment_const'+tag+'.png')
 mean_recon_data_var = \
     A_var(posterior_samples_var_burnthin.funvals.mean(), is_par=False).\
         reshape([len(locations), len(times)])
-fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
+fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]), 
                 mean_recon_data_var,
                 posterior_samples_var_burnthin,
@@ -349,7 +354,7 @@ fig = plot_experiment(exact_x, exact_data.reshape([len(locations), len(times)]),
 fig.savefig(dir_name+'/experiment_var'+tag+'.png')
     
 # Save constant diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+save_experiment_data(dir_name, exact_x, exact_data,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data_const.reshape(
                          [len(locations), len(times)]),
