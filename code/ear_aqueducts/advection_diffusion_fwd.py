@@ -40,9 +40,10 @@ data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
 data_bc = data.reshape([len(locations_real), len(times)])[0,:]
 
 # CREATE EXPERIMENT TAG
+general_tag = 'expr2'
 manufactured_tag = 'manuf' if manufactured else 'not_manuf'
 c_2_tag = 'c2_'+str(c_2_max)+'_'+str(c_2_min) if args_unknown_par_type != 'constant' else 'c2_'+str(c_2_max)
-expr_tag = 'expr'+args_animal+'_'+args_ear+'_'+str(Pec)+'_'+\
+expr_tag = general_tag +args_animal+'_'+args_ear+'_'+str(Pec)+'_'+\
     c_2_tag+'_'+manufactured_tag+'_'+args_unknown_par_type+'_factor'+str(factor)
 
 # CREATE OUTPUT DIRECTORY
@@ -160,7 +161,7 @@ if manufactured:
 else:
 
     tau_max = 30*60 # Final time in sec
-    cfl = 4/factor # The cfl condition to have a stable solution
+    cfl = 5#4/factor # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
     dt_approx = cfl*h**2 # Defining approximate time step size
     n_tau = int(tau_max/dt_approx)+1 # Number of time steps
