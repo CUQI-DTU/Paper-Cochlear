@@ -96,8 +96,11 @@ print(locations)
 ## Read concentration file and times
 constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
 times = constr_file['time'].values*60
+assert(np.allclose(times ,np.array([   0,  300,  600,  900, 1200, 1500, 1800])))
 print(times)
-data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+#data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+data = np.load("output_advection_diffusion/expr2m1_l_2_c2_100_not_manuf_constant_factor0.25/exact_data.npz")['exact_data']
+exact_data = data.copy()
 data_bc = data.reshape([len(locations_real), len(times)])[0,:]
 if args.data_type == 'synthetic':
     # Do not use real data
@@ -258,6 +261,7 @@ x_const = Gaussian(np.sqrt(400), 100, geometry=G_D_const)
 
 ## Data distribution (constant diffusion coefficient case)
 y_const = Gaussian(A_const(x_const), s_noise**2, geometry=G_cont2D)
+y_const2 = Gaussian(0, s_noise**2, geometry=G_cont2D)
 
 ### CASE 2: creating the prior and the data distribution
 x_var = GMRF( np.ones(G_D_var.par_dim),2, geometry=G_D_var, bc_type='neumann') #TEMP: fix loc and prec
@@ -277,6 +281,9 @@ if args.data_type == 'synthetic':
 
     # TODO: Need to be fixed
     data = data.to_numpy()
+
+else:
+    data = data + y_const2.sample().ravel().to_numpy()
 
 ### CASE 1 SAMPLING: constant diffusion coefficient
 ## Joint distribution (constant diffusion coefficient case)
@@ -341,17 +348,7 @@ fig = plot_experiment(exact_x, exact_data,
 # Save figure
 fig.savefig(dir_name+'/experiment_const'+tag+'.png')
 
-# Plot varying in space diffusion coefficient case
-mean_recon_data_var = \
-    A_var(posterior_samples_var_burnthin.funvals.mean(), is_par=False).\
-        reshape([len(locations), len(times)])
-fig = plot_experiment(exact_x, exact_data,
-                data.reshape([len(locations), len(times)]), 
-                mean_recon_data_var,
-                posterior_samples_var_burnthin,
-                args, locations, times)
-# Save figure
-fig.savefig(dir_name+'/experiment_var'+tag+'.png')
+
     
 # Save constant diffusion coefficient case
 save_experiment_data(dir_name, exact_x, exact_data,
@@ -361,10 +358,4 @@ save_experiment_data(dir_name, exact_x, exact_data,
                      posterior_samples_const_burnthin,
                      args, locations, times)
 
-# Save varying in space diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
-                     data.reshape([len(locations), len(times)]),
-                     mean_recon_data_var.reshape(
-                         [len(locations), len(times)]),
-                     posterior_samples_var_burnthin,
-                     args, locations, times)
+
