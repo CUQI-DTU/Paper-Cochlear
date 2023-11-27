@@ -744,5 +744,103 @@ for i, animal in enumerate(animals):
 #    
 
 
-# %%
+# %% PLOT 13: diffusion, real data, including Scala Tympani.
 
+# Create a figure with 3 subplots, one row and 3 columns
+# the first column is the real data, the second column is the 95% CI (constant inference) and the third column is the 95% CI (variable inference)
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = './results2'
+
+# Create figure
+figure, axs = plt.subplots(1, 3, figsize=(9, 2.1))
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.4, wspace=0.4)
+#---------------------- time series for the real data
+plt.sca(axs[0])
+#read real data
+tag = 'm1_l_NUTS_smooth_400.0_1200.0_real_both_100_100_0.1_v_nov13__CA_ST'
+const = True
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=const)
+plot_time_series(times, locations, data, loc='upper right', ncol=2)
+# remove legend
+plt.gca().legend_.remove()
+
+#---------------------- 95% CI (constant inference)
+plt.sca(axs[1])
+
+samples.plot_ci(exact = None)
+plt.xlabel('unknown parameter')
+plt.ylabel('$c^2$')
+plt.ylim([100, 200])
+
+#---------------------- 95% CI (variable inference)
+plt.sca(axs[2])
+tag = 'm1_l_NUTS_smooth_400.0_1200.0_real_both_100_100_0.1_v_nov13__CA_ST'
+const = False
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=const)
+
+samples.plot_ci(exact = None)
+plt.xlabel('$\\xi$')
+plt.ylabel('$c^2$')
+plt.ylim([100, 1000])
+
+# plot vertical dotted lines for locations
+for loc in locations:
+    plt.axvline(x = loc, color = 'gray', linestyle = '--')
+
+# make figure for data legend only
+plt.figure()
+plot_time_series(times, locations, data, loc='upper right', ncol=2)
+# remove data lines
+plt.gca().lines_ = []
+# remove x and y axis
+plt.gca().axes.get_xaxis().set_visible(False)
+plt.gca().axes.get_yaxis().set_visible(False)
+
+
+
+# %% PLOT 14: diffusion, real data, including Scala Tympani.
+
+# Create a figure with 3 subplots, one row and 3 columns
+# the first column is the real data, the second column is the mean-reconstructed data (constant inference) and the third column is the mean-reconstructed data (variable inference)
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = './results2'
+
+# Create figure
+figure, axs = plt.subplots(1, 3, figsize=(9, 2.1))
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.4, wspace=0.4)
+#---------------------- time series for the real data
+plt.sca(axs[0])
+#read real data
+tag = 'm1_l_NUTS_smooth_400.0_1200.0_real_both_100_100_0.1_v_nov13__CA_ST'
+const = True
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=const)
+plot_time_series(times, locations, data, loc='upper right', ncol=2)
+# remove legend
+plt.gca().legend_.remove()
+
+#---------------------- mean-reconstructed data (constant inference)
+plt.sca(axs[1])
+plot_time_series(times, locations, mean_recon_data, loc='upper right', ncol=2)
+
+
+#---------------------- mean-reconstructed data (variable inference)
+plt.sca(axs[2])
+tag = 'm1_l_NUTS_smooth_400.0_1200.0_real_both_100_100_0.1_v_nov13__CA_ST'
+const = False
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=const)
+
+plot_time_series(times, locations, mean_recon_data, loc='upper right', ncol=2)
