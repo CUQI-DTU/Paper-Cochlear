@@ -585,4 +585,59 @@ mean_recon_data = var_diff_model_aug25(samples_mean,real_times, real_locations, 
 plot_time_series(real_times, real_locations, mean_recon_data.reshape((len(real_locations), len(real_times))))
 
 
+#%%PLOT 10: Summary of results for real data (ESS)
+# Create and save figure of 1 rows and 3 columns for
+# Data, ESS (constant inference), ESS (variable inference)
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts'
+animal = 'm1'
+ear = 'l'
+
+
+# Create figure
+
+figure, axs = plt.subplots(1, 3, figsize=(9, 2.1))
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.4, wspace=0.4)
+
+#---------------------- time series for the real data
+plt.sca(axs[0])
+#read real data
+
+# distance file
+import pandas as pd
+dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_distances.csv')
+real_locations = dist_file['distance microns'].values[:5]
+print(locations)
+
+## Read concentration file
+constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_parsed.csv')
+real_data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+real_times = constr_file['time'].values*60
+
+real_data = real_data.reshape((len(real_locations), len(real_times)))
+plot_time_series(real_times, real_locations, real_data)
+
+#---------------------- ESS (constant inference)
+plt.sca(axs[1])
+tag = animal+ear+'NUTSv8'
+samples_numpy = np.load(dir_name+'/output'+tag+'/posterior_samples_const_'+tag+'.npz')
+samples = cuqi.samples.Samples(samples_numpy['arr_0'], geometry = const_geom)
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('unknown parameter')
+plt.ylabel('ESS')
+
+#---------------------- ESS (variable inference)
+plt.sca(axs[2])
+samples_numpy = np.load(dir_name+'/output'+tag+'/posterior_samples_var_'+tag+'.npz')
+samples = cuqi.samples.Samples(samples_numpy['arr_0'], geometry = var_geom)
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('$\\xi$')
+plt.ylabel('ESS')
+
+
+
+
 # %%
