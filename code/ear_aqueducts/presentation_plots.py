@@ -226,7 +226,7 @@ for loc in locations2:
 
 # %%
 # %%
-#PLOT 4: Summary of results (mean-reconstructed data)
+#PLOT 6: Summary of results (mean-reconstructed data)
 # Create and save figure of 2 rows and 3 columns for
 # Data, mean-reconstructed data (constant inference), mean-reconstructed data (variable inference)
 
@@ -284,6 +284,88 @@ experiment_par, locations, times =\
     read_experiment_data(dir_name, tag, const=False)
 plt.sca(axs[1, 2])
 plot_time_series(times, locations, mean_recon_data)
+
+
+# %%
+
+
+# %%
+#PLOT 7: Summary of results (ESS)
+# Create and save figure of 2 rows and 3 columns for
+# Data, ESS (constant inference), ESS (variable inference)
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts_aug_25'
+tag = 'm1_l_NUTS_constant_100.0_synthetic_both_5000_5000_0.01_v_aug25_a_rerun_'
+const = True
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=const)
+
+# Create figure
+figure, axs = plt.subplots(2, 3, figsize=(9, 4.5))
+
+#---------------------- time series for the constant real parameter case
+plt.sca(axs[0, 0])
+plot_time_series(times, locations, data)
+
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.4, wspace=0.4)
+
+#---------------------- ESS (constant inference)
+plt.sca(axs[0, 1])
+samples.is_par = True
+samples.is_vec = True
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('unknown parameter')
+plt.ylabel('ESS')
+
+
+
+
+#---------------------- ESS (variable inference)
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=False)
+plt.sca(axs[0, 2])
+samples.is_par = True
+samples.is_vec = True
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('$\\xi$')
+plt.ylabel('ESS')
+
+
+
+#---------------------- time series for the variable real parameter case
+# Load data
+tag = 'm1_l_NUTS_smooth_400.0_1200.0_synthetic_both_5000_5000_0.01_v_aug25_a_rerun_'
+
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=True)
+plt.sca(axs[1, 0])
+plot_time_series(times, locations, data)
+
+
+#---------------------- ESS (constant inference)
+plt.sca(axs[1, 1])
+samples.is_par = True
+samples.is_vec = True
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('unknown parameter')
+plt.ylabel('ESS')
+
+#---------------------- ESS (variable inference)
+exact, exact_data, data, mean_recon_data, samples,\
+experiment_par, locations, times =\
+    read_experiment_data(dir_name, tag, const=False)
+plt.sca(axs[1, 2])
+samples.is_par = True
+samples.is_vec = True
+samples.geometry.plot(samples.compute_ess(), is_par=False)
+plt.xlabel('$\\xi$')
+plt.ylabel('ESS')
 
 
 # %%
