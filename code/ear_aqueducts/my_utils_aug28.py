@@ -8,7 +8,7 @@ except:
     sys.path.append('../../../../tools')
     import dill as pickle
 
-def plot_time_series(times, locations, data):
+def plot_time_series(times, locations, data, loc=None, ncol=1):
 
     # Plot data
     color = ['r', 'g', 'b', 'k', 'm', 'c']
@@ -16,8 +16,10 @@ def plot_time_series(times, locations, data):
     lines = []
     for i in range(len(locations)):
         lines.append(plt.plot(times/60, data[i,:],  color=color[i])[0])
-    
-    plt.legend(lines, legends)
+    if loc is not None:
+        plt.legend(lines, legends, loc=loc, ncol=ncol)
+    else:
+        plt.legend(lines, legends)
     plt.xlabel('Time (min)')
     plt.ylabel('Concentration')
     plt.ylim([0, 5500])

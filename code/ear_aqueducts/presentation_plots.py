@@ -681,7 +681,7 @@ for i, animal in enumerate(animals):
 
         plt.title("animal "+animal+", ear "+ear)
         # set xlabel location
-        plt.gca().xaxis.set_label_coords(0.5, -.05)
+        plt.gca().xaxis.set_label_coords(0.5, 0.12)
         
         #---------------------- 95% CI (variable inference)
         plt.sca(axs[i, 1])
