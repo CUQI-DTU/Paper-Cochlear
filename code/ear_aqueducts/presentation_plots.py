@@ -3,7 +3,110 @@
 # Imports
 from my_utils_aug28 import plot_experiment, plot_time_series, read_experiment_data, matplotlib_setup #, set_matlab_defaults
 import matplotlib.pyplot as plt
+from cuqi.pde import TimeDependentLinearPDE
+from cuqi.geometry import MappedGeometry, Discrete, Continuous2D, Continuous1D
+from cuqi.model import PDEModel
 
+# Functions:
+def const_diff_model_aug25(input, times, locations, data, L=500, n_grid=100, tau_max=30*60, cfl=5):
+    ## Set PDE parameters
+    h = L/(n_grid+1)   # Space step size
+    grid = np.linspace(h, L-h, n_grid)
+    
+    dt_approx = cfl*h**2 # Defining approximate time step size
+    n_tau = int(tau_max/dt_approx)+1 # Number of time steps
+    tau = np.linspace(0, tau_max, n_tau)
+    
+    ## Source term (constant diffusion coefficient case)
+    def g_const(c, tau_current):
+        f_array = np.zeros(n_grid)
+        f_array[0] = c/h**2*np.interp(tau_current, times, data.reshape([len(locations), len(times)])[0,:])
+        return f_array
+    
+    ## Differential operator (constant diffusion coefficient case)
+    D_c_const = lambda c: c * ( np.diag(-2*np.ones(n_grid), 0) +
+    np.diag(np.ones(n_grid-1), -1) +
+    np.diag(np.ones(n_grid-1), 1) ) / h**2
+    
+    ## Initial condition
+    initial_condition = np.zeros(n_grid) 
+    
+    ## PDE form (constant diffusion coefficient case)
+    def PDE_form_const(c, tau_current):
+        return (D_c_const(c), g_const(c, tau_current), initial_condition)
+    
+    ## CUQIpy PDE object (constant diffusion coefficient case)
+    PDE_const = TimeDependentLinearPDE(PDE_form_const, tau, grid_sol=grid,
+                                 method='backward_euler', 
+                                 grid_obs=locations,
+                                time_obs=times) 
+    
+    ## Domain geometry (constant diffusion coefficient case)
+    G_D_const =  MappedGeometry( Discrete(1),  map=lambda x: x**2 )
+    
+    ## Range geometry
+    G_cont2D = Continuous2D((locations, times))
+    
+    ## PDE forward model (constant diffusion coefficient case)
+    A_const = PDEModel(PDE_const, range_geometry=G_cont2D, domain_geometry=G_D_const)
+
+    return A_const(input)
+    
+def var_diff_model_aug25(input, times, locations, data, L=500, n_grid=100, tau_max=30*60, cfl=5):
+    ## Set PDE parameters
+    h = L/(n_grid+1)   # Space step size
+    grid = np.linspace(h, L-h, n_grid)
+    
+    dt_approx = cfl*h**2 # Defining approximate time step size
+    n_tau = int(tau_max/dt_approx)+1 # Number of time steps
+    tau = np.linspace(0, tau_max, n_tau)
+    
+
+    # grid for the diffusion coefficient
+    n_grid_c = 20
+    hs = L/(n_grid_c+1) 
+    grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+    grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
+    
+    ## Source term (varying in space diffusion coefficient case)
+    def g_var(c, tau_current):
+        f_array = np.zeros(n_grid)
+        f_array[0] = c[0]/h**2*np.interp(tau_current, times, data.reshape([len(locations), len(times)])[0,:])
+        return f_array
+    
+    ## Differential operator (varying in space diffusion coefficient case)
+    Dx = - np.diag(np.ones(n_grid), 0)+ np.diag(np.ones(n_grid-1), 1) 
+    vec = np.zeros(n_grid)
+    vec[0] = 1
+    Dx = np.concatenate([vec.reshape([1, -1]), Dx], axis=0)
+    Dx /= h # FD derivative matrix
+    
+    D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
+    
+    ## Initial condition
+    initial_condition = np.zeros(n_grid)
+
+    def PDE_form_var(c, tau_current):
+        c = np.interp(grid_c_fine, grid_c, c)
+        return (D_c_var(c), g_var(c, tau_current), initial_condition)
+    
+    
+    PDE_var = TimeDependentLinearPDE(PDE_form_var, tau, grid_sol=grid,
+                                 method='backward_euler', 
+                                 grid_obs=locations,
+                                time_obs=times) 
+    
+    # Domain geometry
+    G_D_var =  MappedGeometry( Continuous1D(grid_c),  map=lambda x: x**2 )
+    
+    ## Range geometry
+    G_cont2D = Continuous2D((locations, times))
+    
+    A_var = PDEModel(PDE_var, range_geometry=G_cont2D, domain_geometry=G_D_var)
+
+    return A_var(input)
+    
+    
 # Output directory
 dir_name = 'data/ear_aqueducts'
 
@@ -427,5 +530,59 @@ plt.ylim([0, 1000])
 # set ticks labels
 plt.xlabel('$\\xi$')
 plt.ylabel('$c^2$')
+
+# %% PLOT 9: Summary of results for real data (mean-reconstructed data)
+# Create and save figure of 1 rows and 3 columns for 
+# Data, mean-reconstructed data (constant inference), mean-reconstructed data (variable inference)
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts'
+animal = 'm1'
+ear = 'l'
+
+
+# Create figure
+figure, axs = plt.subplots(1, 3, figsize=(9, 2.1))
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.4, wspace=0.4)
+#---------------------- time series for the real data
+plt.sca(axs[0])
+#read real data
+
+# distance file
+import pandas as pd
+dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_distances.csv')
+real_locations = dist_file['distance microns'].values[:5]
+print(locations)
+
+## Read concentration file
+constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_parsed.csv')
+real_data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+real_times = constr_file['time'].values*60
+
+real_data = real_data.reshape((len(real_locations), len(real_times)))
+plot_time_series(real_times, real_locations, real_data)
+
+
+#---------------------- mean-reconstructed data (constant inference)
+plt.sca(axs[1])
+tag = animal+ear+'NUTSv8'
+samples_numpy = np.load(dir_name+'/output'+tag+'/posterior_samples_const_'+tag+'.npz')
+samples = cuqi.samples.Samples(samples_numpy['arr_0'], geometry = const_geom)
+samples_mean = samples.mean()
+
+mean_recon_data = const_diff_model_aug25(samples_mean,real_times, real_locations, real_data)
+plot_time_series(real_times, real_locations, mean_recon_data.reshape((len(real_locations), len(real_times))))
+
+#---------------------- mean-reconstructed data (variable inference)
+plt.sca(axs[2])
+samples_numpy = np.load(dir_name+'/output'+tag+'/posterior_samples_var_'+tag+'.npz')
+samples = cuqi.samples.Samples(samples_numpy['arr_0'], geometry = var_geom)
+samples_mean = samples.mean()
+
+mean_recon_data = var_diff_model_aug25(samples_mean,real_times, real_locations, real_data)
+plot_time_series(real_times, real_locations, mean_recon_data.reshape((len(real_locations), len(real_times))))
+
 
 # %%
