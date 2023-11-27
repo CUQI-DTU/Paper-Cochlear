@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.geometry import MappedGeometry, Discrete, Continuous2D, Continuous1D
 from cuqi.model import PDEModel
+import numpy as np
+import cuqi
 
 # Functions:
 def const_diff_model_aug25(input, times, locations, data, L=500, n_grid=100, tau_max=30*60, cfl=5):
@@ -301,8 +303,6 @@ plt.sca(axs[1, 1])
 
 
 #---------------------- 95% CI (variable inference)
-import numpy as np
-import cuqi
 dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts_aug_25'
 tag = 'm1_l_NUTS_smooth_400.0_1200.0_synthetic_both_5000_5000_0.01_v_aug25_a_480.0'
 const = True
@@ -637,6 +637,66 @@ samples.geometry.plot(samples.compute_ess(), is_par=False)
 plt.xlabel('$\\xi$')
 plt.ylabel('ESS')
 
+
+
+
+# %% Plot 11: Summary of results for real data (reconstruction) for different animals
+# Create and save figure of 4 rows and 2 columns for
+# Data, 95% credible interval (variable inference) 
+# and add the average ESS in the title of CI plots
+
+matplotlib_setup(8, 9, 10)
+# Load data
+dir_name = '../../../Collab-BrainEfflux-Data/ear_aqueducts'
+animals = ['m1', 'm3', 'm4', 'm6']
+ears = ['l']
+
+# Create figure
+figure, axs = plt.subplots(4, 2, figsize=(9, 7))
+# increase spacing between subplots
+figure.subplots_adjust(hspace=0.5, wspace=0.4)
+
+for i, animal in enumerate(animals):
+    for j, ear in enumerate(ears):
+        #---------------------- time series for the real data
+        plt.sca(axs[i, 0])
+        #read real data
+        
+        # distance file
+        import pandas as pd
+        dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_distances.csv')
+        real_locations = dist_file['distance microns'].values[:5]
+        
+        ## Read concentration file
+        constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+animal+'_'+ear+'_parsed.csv')
+        real_data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+        real_times = constr_file['time'].values*60
+        
+        real_data = real_data.reshape((len(real_locations), len(real_times)))
+        plot_time_series(real_times, real_locations, real_data, loc='upper right', ncol=2)
+        plt.ylim([0, 7000])
+        if i!=0:
+            # remove legend
+            plt.gca().legend_.remove()
+
+        plt.title("animal "+animal+", ear "+ear)
+        # set xlabel location
+        plt.gca().xaxis.set_label_coords(0.5, -.05)
+        
+        #---------------------- 95% CI (variable inference)
+        plt.sca(axs[i, 1])
+        tag = animal+ear+'NUTSv8'
+        samples_numpy = np.load(dir_name+'/output'+tag+'/posterior_samples_var_'+tag+'.npz')
+        samples = cuqi.samples.Samples(samples_numpy['arr_0'], geometry = var_geom)
+        samples.plot_ci(exact = None)
+        plt.ylim([0, 1500])
+        # set ticks labels
+        plt.xlabel('$\\xi$')
+        plt.ylabel('$c^2$')
+        # set xlabel location
+        plt.gca().xaxis.set_label_coords(0.5, -.05)
+        # add ESS to title 
+        plt.title('ESS = '+str(int(np.average(samples.compute_ess()))))
 
 
 
