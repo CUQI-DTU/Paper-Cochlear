@@ -700,4 +700,49 @@ for i, animal in enumerate(animals):
 
 
 
+
+##%% (data is not saved) PLOT 12: Advection-diffusion (constant inference)
+## plot a 3 by 3 grid of plots. Each row is for a 
+## different value of the peclet number, and each row has
+## the noisy data, and the 95% CI, and the mean-reconstructed data
+#
+#matplotlib_setup(8, 9, 10)
+#
+## Peclet numbers
+#pec = [0.1, 1, 2]
+#dir_name = '.'
+#
+## Create figure
+#figure, axs = plt.subplots(3, 3, figsize=(9, 7))
+## increase spacing between subplots
+#figure.subplots_adjust(hspace=0.5, wspace=0.4)
+#
+#for i, pec_i in enumerate(pec):
+#    tag = "m1_l_NUTS_constant_100.0_real_both_1000_10_0.1_v_oct11_pec_"+str(pec_i)+"_c_"
+#    const = True
+#    exact, exact_data, data, mean_recon_data, samples,\
+#    experiment_par, locations, times =\
+#        read_experiment_data(dir_name, tag, const=const)
+#    
+#    #---------------------- time series for the real data
+#    plt.sca(axs[i, 0])
+#    plot_time_series(times, locations, data, loc='upper right', ncol=2)
+#    plt.ylim([0, 7000])
+#    plt.title("Peclet number = "+str(pec_i))
+#
+#    #---------------------- 95% CI (constant inference)
+#    plt.sca(axs[i, 1])
+#    samples.is_par = True
+#    samples.is_vec = True
+#    samples.geometry.plot(samples.compute_ess(), is_par=False)
+#    plt.xlabel('unknown parameter')
+#    plt.ylabel('ESS')
+#
+#    #---------------------- mean-reconstructed data (constant inference)
+#    plt.sca(axs[i, 2])
+#    plot_time_series(times, locations, mean_recon_data, loc='upper right', ncol=2)
+#    
+
+
 # %%
+
