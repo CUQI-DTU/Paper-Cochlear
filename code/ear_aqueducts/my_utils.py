@@ -34,16 +34,32 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
         name_str = 'const'
     else:
         name_str = 'var'
+    
+    # This is a workaround solution to not pickle the CUQIarray object
+    # exact because it loses properties with pickling. 
+    # We pickle its components instead (the geometry, the flag is_par 
+    # and the numpy array).
+    if exact:
+        # convert exact to array and save its geometry
+        exact_geometry = exact.geometry
+        exact_is_par = exact.is_par
+        exact = exact.to_numpy()
+    else:
+        exact_geometry = None
+        exact_is_par =None
 
-    # convert exact to array and save its geometry
-    exact_geometry = exact.geometry
-    exact_is_par = exact.is_par
-    exact = exact.to_numpy()
-
-    # convert exact_data to array and save its geometry
-    exact_data_geometry = exact_data.geometry
-    exact_data_is_par = exact_data.is_par
-    exact_data = exact_data.to_numpy()
+    # This is a workaround solution to not pickle the CUQIarray object
+    # exact_data because it loses properties with pickling. 
+    # We pickle its components instead (the geometry, the flag is_par 
+    # and the numpy array).
+    if exact_data:
+        # convert exact_data to array and save its geometry
+        exact_data_geometry = exact_data.geometry
+        exact_data_is_par = exact_data.is_par
+        exact_data = exact_data.to_numpy()
+    else:
+        exact_data_geometry = None
+        exact_data_is_par =None
 
     # Save data in pickle file named with tag
     tag = create_experiment_tag(experiment_par)
@@ -166,7 +182,7 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     plt.plot(ESS_list, marker=marker)
     plt.title('ESS')
 
-    # Plot exact
+    # Plot exact   
     if exact is not None:
         plt.sca(axsTop[2, 1])
         exact.plot(marker=marker) 
@@ -214,6 +230,7 @@ def create_experiment_tag(experiment_par):
         str(experiment_par.Ns_const)+'_'+str(experiment_par.Ns_var)+'_'+\
         str(experiment_par.noise_level)+'_'+\
         version+'_'+\
-        data_pt_str
+        data_pt_str+'_'+\
+        str(experiment_par.data_pts_type)
     
     return tag

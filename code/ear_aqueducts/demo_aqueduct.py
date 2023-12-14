@@ -12,6 +12,9 @@ import argparse
 import warnings
 import os
 
+import cuqi
+print(cuqi.__version__)
+
 from cuqi.distribution import Gaussian, JointDistribution, GMRF
 from cuqi.geometry import Continuous1D, KLExpansion, Discrete,\
     MappedGeometry, Continuous2D, Image2D
@@ -69,9 +72,15 @@ parser.add_argument('-inference_type', metavar='inference_type', type=str,
 parser.add_argument('-Ns_const', metavar='Ns_const', type=int,
                     default=300,
                     help='Number of samples for constant inference')
+parser.add_argument('-Nb_const', metavar='Nb_const', type=int,
+                    default=20,
+                    help='Number of burn-in samples for constant inference')
 parser.add_argument('-Ns_var', metavar='Ns_var', type=int,
                     default=10,
                     help='Number of samples for heterogeneous inference')
+parser.add_argument('-Nb_var', metavar='Nb_var', type=int,
+                    default=20,
+                    help='Number of burn-in samples for heterogeneous inference')
 parser.add_argument('-noise_level', metavar='noise_level', 
                     type=float,
                     default=0.1,
@@ -80,37 +89,77 @@ parser.add_argument('-add_data_pts', metavar='add_data_pts',
                     nargs='*',
                     type=float,
                     default=[])
+# only CA or CA and ST
+parser.add_argument('-data_pts_type', metavar='data_pts_type', type=str,
+                    choices=[
+                        'CA', 'CA_ST'],
+                    default='CA',
+                    help='Type of data points, CA or CA and ST')
+# number of ST points used when -data_pts_type is CA_ST
+parser.add_argument('-num_ST', metavar='num_ST', type=int,
+                    choices=range(9),
+                    default=0,
+                    help='number of ST points used when -data_pts_type is CA_ST') 
+
 args = parser.parse_known_args()[0]
 
 ## Process arguments
 process_experiment_par(args)
 
-## Read distance file
-dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
-locations_real = dist_file['distance microns'].values[:5]
-print(locations_real)
-print(args.add_data_pts)
+if args.data_pts_type == 'CA':
+    ## Read distance file
+    dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+    locations_real = dist_file['distance microns'].values[:5]
+    print(locations_real)
+    print(args.add_data_pts)
+
+    
+    ## Read concentration file and times
+    constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+    times = constr_file['time'].values*60
+    print(times)
+    data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
+    data_bc = data.reshape([len(locations_real), len(times)])[0,:]
+    if args.data_type == 'synthetic':
+        # Do not use real data
+        data = None
+    else:
+        # Print real data
+        print(data)
+
+elif args.data_pts_type == 'CA_ST':
+    print('CA and ST')
+    ## Read distance file
+    dist_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+    # locations distance microns where 20210120_omnip10um_KX_M1_nosound_L is in
+    # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
+    ST_list = ['ST'+str(i) for i in range(args.num_ST)]
+    locations_keys = ['CA1', 'CA2', 'CA3', 'CA4', 'CA5'].extend(ST_list)
+    locations_real = dist_file['distance'].values
+
+
+    print("locations_real")    
+    print(locations_real)
+
+    ## Read concentration file and times
+    constr_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+    times = constr_file['time'].values*60
+    print(times)
+    data = constr_file[locations_keys].values.T.ravel()
+    data_bc = data.reshape([len(locations_real), len(times)])[0,:]
+    print(data)
+    print(data_bc)
+
+
 locations = np.concatenate((locations_real, np.array(args.add_data_pts)))
 print(locations)
-
-## Read concentration file and times
-constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
-times = constr_file['time'].values*60
-print(times)
-data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
-data_bc = data.reshape([len(locations_real), len(times)])[0,:]
-if args.data_type == 'synthetic':
-    # Do not use real data
-    data = None
-else:
-    # Print real data
-    print(data)
+   
 
 tag = create_experiment_tag(args)
 print(tag)
 
 ## Create output directory
-dir_name = 'output'+tag
+dir_name = 'results3/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -121,8 +170,8 @@ os.system('cp '+__file__+' '+dir_name+'/')
 
 #%%
 ## Set PDE parameters
-L = 500
-n_grid = 100   # Number of solution nodes
+L = locations_real[-1]*1.01
+n_grid =int(L/5)   # Number of solution nodes
 h = L/(n_grid+1)   # Space step size
 grid = np.linspace(h, L-h, n_grid)
 
@@ -212,6 +261,8 @@ A_var = PDEModel(PDE_var, range_geometry=G_cont2D, domain_geometry=G_D_var)
 ### FOR ALL CASES: Create the data
 
 # If the data is not provided, we create it
+exact_x = None
+exact_data = None
 if args.data_type == 'synthetic':
     # if the unknown parameter is constant
     if args.unknown_par_type == 'constant':
@@ -287,19 +338,19 @@ posterior_const = joint_const(y_const=data) # condition on y=y_obs
 
 ## Create sampler (constant diffusion coefficient case) and sample
 Ns_const = args.Ns_const
-Nb_const = int(Ns_const*0.3) 
+Nb_const = args.Nb_const 
 if args.sampler == 'MH':
     my_sampler_const = MH(posterior_const, scale=10, x0=20)
     posterior_samples_const = my_sampler_const.sample_adapt(Ns_const)
+    posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 elif args.sampler == 'NUTS':
     posterior_const.enable_FD()
     my_sampler_const = NUTS(posterior_const, x0=20)
     posterior_samples_const = my_sampler_const.sample_adapt(
-        Ns_const, int(Ns_const*0.1)+10) 
+        Ns_const, Nb_const) 
+    posterior_samples_const_burnthin = posterior_samples_const
 else:
     raise Exception('Unsuppported sampler')
-
-posterior_samples_const_burnthin = posterior_samples_const.burnthin(Nb_const)
 
 
 ### CASE 2 SAMPLING: varying in space diffusion coefficient
@@ -308,21 +359,21 @@ joint_var = JointDistribution(x_var, y_var)
 posterior_var = joint_var(y_var=data) 
 
 Ns_var = args.Ns_var
-Nb_var = int(Ns_var*0.3)
+Nb_var = args.Nb_var
 
 if args.sampler == 'MH':
     my_sampler_var = MH(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
     posterior_samples_var = my_sampler_var.sample_adapt(Ns_var)
+    posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 elif args.sampler == 'NUTS':
     posterior_var.enable_FD()
-    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20)
-    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, int(Ns_var*0.1))
+    my_sampler_var = NUTS(posterior_var, x0=np.ones(G_D_var.par_dim)*20, max_depth=6)
+    posterior_samples_var = my_sampler_var.sample_adapt(Ns_var, Nb_var)
+    posterior_samples_var_burnthin = posterior_samples_var
 else:
     raise Exception('Unsuppported sampler')
 
 BP = BayesianProblem(x_var, y_var).set_data(y_var=data)
-
-posterior_samples_var_burnthin = posterior_samples_var.burnthin(Nb_var)
 
 # Plot constant diffusion coefficient case
 # if exact_x is not defined, set it to None
@@ -345,6 +396,7 @@ fig.savefig(dir_name+'/experiment_const'+tag+'.png')
 mean_recon_data_var = \
     A_var(posterior_samples_var_burnthin.funvals.mean(), is_par=False).\
         reshape([len(locations), len(times)])
+
 fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]), 
                 mean_recon_data_var,
@@ -354,7 +406,8 @@ fig = plot_experiment(exact_x, exact_data,
 fig.savefig(dir_name+'/experiment_var'+tag+'.png')
     
 # Save constant diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data,
+save_experiment_data(dir_name, exact_x, 
+                     exact_data.reshape([len(locations), len(times)]) if exact_data else None,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data_const.reshape(
                          [len(locations), len(times)]),
@@ -362,7 +415,8 @@ save_experiment_data(dir_name, exact_x, exact_data,
                      args, locations, times)
 
 # Save varying in space diffusion coefficient case
-save_experiment_data(dir_name, exact_x, exact_data.reshape([len(locations), len(times)]),
+save_experiment_data(dir_name, exact_x, 
+                     exact_data.reshape([len(locations), len(times)]) if exact_data else None,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data_var.reshape(
                          [len(locations), len(times)]),
