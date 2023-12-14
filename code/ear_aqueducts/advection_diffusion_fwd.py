@@ -10,7 +10,9 @@ from cuqi.geometry import Continuous1D, Discrete,\
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel
 from cuqi.array import CUQIarray
-from my_utils import plot_time_series, save_experiment_data
+from my_utils import plot_time_series, save_experiment_data, matplotlib_setup
+
+matplotlib_setup(8, 9, 10)
 
 # Paramaters:
 # location_type: 'real' or 'uniform'
@@ -60,7 +62,7 @@ expr_tag = general_tag +args_animal+'_'+args_ear+'_'+str(Pec)+'_'+\
     +'_loc_factor'+str(loc_factor)
 
 # CREATE OUTPUT DIRECTORY
-dir_name = 'output_advection_diffusion/'+expr_tag+'/'
+dir_name = 'output_advection_diffusion_presentation/'+expr_tag+'/'
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -264,15 +266,18 @@ u, _ = PDE.solve()
 exact_data = A(exact_x)
 
 # PLOT AND SAVE THE SOLUTION (OVER SPACE)
+plt.figure(figsize=(4, 2.2))
 plt.plot(grid, u)
 plt.title('Solution at different times, a='+str(a)+', Pec='+str(Pec))
-plt.savefig(dir_name+'sol_space.png')
+plt.savefig(dir_name+'sol_space.png', bbox_inches='tight')
 
 # PLOT AND SAVE THE SOLUTION (OVER TIME)
-plt.figure()
+# set figure size
+plt.figure(figsize=(4, 2.2))
+
 plot_time_series(times, locations, exact_data.reshape([len(locations), len(times)]))
 plt.title('Exact sol, a='+str(a)+', Pec='+str(Pec))
-plt.savefig(dir_name+'exact_data.png')
+plt.savefig(dir_name+'exact_data.png', bbox_inches='tight')
 
 # SAVE THE EXACT DATA, LOCATION, TIME, AND EXPERIMENT PARAMETERS
 np.savez(dir_name+'exact_data.npz', exact_data=exact_data, locations=locations,
@@ -294,3 +299,5 @@ if manufactured:
                 str(np.linalg.norm(exact_sol_array-u)/np.linalg.norm(exact_sol_array)))
     plt.savefig(dir_name+'diff_exact_numerical.png')
 
+
+# %%
