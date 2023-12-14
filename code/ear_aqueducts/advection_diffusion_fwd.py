@@ -12,24 +12,36 @@ from cuqi.model import PDEModel
 from cuqi.array import CUQIarray
 from my_utils import plot_time_series, save_experiment_data
 
+# Paramaters:
+# location_type: 'real' or 'uniform'
+location_type = 'real'
+num_of_real_data_points = 5
 # WHICH ANIMAL AND EAR TO USE
 args_animal = 'm1'
 args_ear = 'l'
 
 # ADDITIONAL PARAMETERS
-factor = 1 # factor for refining the grid and the time steps
-Pec = 10 # Peclet number
+factor = .25 # factor for refining the grid and the time steps
+loc_factor = 3
+Pec = 0 # Peclet number
 c_2_max = 100 # Maximum diffusion coefficient
 c_2_min = 100 # Minimum diffusion coefficient
 args_unknown_par_type = 'constant' # Type of diffusivity profile: 
                                    #'constant', 'step', 'smooth'
-manufactured = True # If True, use a manufactured solution
+manufactured = False # If True, use a manufactured solution
                      # to verify the implementation
 
 # READ ANIMAL DATA, (LOCATION)
 dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args_animal+'_'+args_ear+'_distances.csv')
-locations = dist_file['distance microns'].values[:5]
+
+if location_type == 'real':
+    locations = dist_file['distance microns'].values[:num_of_real_data_points]
+elif location_type == 'uniform':
+    locations = np.linspace(0, 500, loc_factor*5)
+else:
+    raise Exception('location_type not recognized')
 locations_real = locations
+
 
 # READ ANIMAL DATA, (CONCENTRATION AND TIME)
 constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args_animal+'_'+args_ear+'_parsed.csv')
@@ -37,13 +49,15 @@ times = constr_file['time'].values*60
 data = constr_file[['CA1', 'CA2', 'CA3', 'CA4', 'CA5']].values.T.ravel()
 
 # EXTRACT THE DATA FOR THE FIRST LOCATION TO USE AS BOUNDARY CONDITION
-data_bc = data.reshape([len(locations_real), len(times)])[0,:]
+data_bc = data.reshape([num_of_real_data_points, len(times)])[0,:]
 
 # CREATE EXPERIMENT TAG
+general_tag = 'expr2'
 manufactured_tag = 'manuf' if manufactured else 'not_manuf'
 c_2_tag = 'c2_'+str(c_2_max)+'_'+str(c_2_min) if args_unknown_par_type != 'constant' else 'c2_'+str(c_2_max)
-expr_tag = 'expr'+args_animal+'_'+args_ear+'_'+str(Pec)+'_'+\
-    c_2_tag+'_'+manufactured_tag+'_'+args_unknown_par_type+'_factor'+str(factor)
+expr_tag = general_tag +args_animal+'_'+args_ear+'_'+str(Pec)+'_'+\
+    c_2_tag+'_'+manufactured_tag+'_'+args_unknown_par_type+'_factor'+str(factor)\
+    +'_loc_factor'+str(loc_factor)
 
 # CREATE OUTPUT DIRECTORY
 dir_name = 'output_advection_diffusion/'+expr_tag+'/'
@@ -160,7 +174,7 @@ if manufactured:
 else:
 
     tau_max = 30*60 # Final time in sec
-    cfl = 5/factor # The cfl condition to have a stable solution
+    cfl = 5#/factor # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
     dt_approx = cfl*h**2 # Defining approximate time step size
     n_tau = int(tau_max/dt_approx)+1 # Number of time steps
@@ -173,9 +187,10 @@ else:
         def g_const(c, tau_current):
             f_array = np.zeros(n_grid)
             # exact_sol(0, tau_current)*(-2*c/h**2 + a/h)
-            #f_array[0] = c/h**2*np.interp(tau_current, times, data_bc)
-            f_array[0] = -np.interp(tau_current, times, data_bc)*(-2*c/h**2 - -1*a/h)
-            f_array[1] = -np.interp(tau_current, times, data_bc)*(c/h**2)
+            f_array[0] = c/h**2*np.interp(tau_current, times, data_bc)
+            
+            #f_array[0] = -np.interp(tau_current, times, data_bc)*(-2*c/h**2 - -1*a/h)
+            #f_array[1] = -np.interp(tau_current, times, data_bc)*(c/h**2)
             #f_array[-2] = -np.interp(tau_current, times, data_bc_end)*(c/h**2 - a/h)
             #f_array[-1] = -np.interp(tau_current, times, data_bc_end)*(-2*c/h**2 - (-1)*a/h)
             return f_array

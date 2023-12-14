@@ -114,7 +114,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
 
     # Expr type (const or var)
     const_inf = True if samples.geometry.par_dim == 1 else False
-    const_true_x = True if exact.geometry.par_dim == 1 else False
+    const_true_x = True 
+    if exact is not None:
+        const_true_x = True if exact.geometry.par_dim == 1 else False
 
     # Set up that depdneds on the whether inference is constant or variable
     # and whether true parameter is constant or variable:
@@ -122,7 +124,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     axsBottom_rows= 3 if const_inf else 3 
     # b. Set exact_for_plot to None if inferred parameter and true parameter
     # are of different geometries
-    exact_for_plot = exact if const_true_x==const_inf else None
+    exact_for_plot = False
+    if exact is not None:
+        exact_for_plot = exact if const_true_x==const_inf else None
     # Hight ratio of top and bottom subfigures
     height_ratios = [1, 1] if const_inf else [1, 1]
     # Trace index list
@@ -148,9 +152,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     subfigs[0].suptitle('Experiment results: '+tag)
 
     # Plot exact data
-    plt.sca(axsTop[0, 0])
-    plot_time_series(times, locations, exact_data)
-    plt.title('Exact data')
+    if exact_data is not None:
+        plt.sca(axsTop[0, 0])
+        plot_time_series(times, locations, exact_data)
+        plt.title('Exact data')
 
     # Plot data
     plt.sca(axsTop[0, 1])
@@ -177,8 +182,8 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     plt.plot(ESS_list, marker=marker)
     plt.title('ESS')
 
-    # Plot exact
-    if exact:
+    # Plot exact   
+    if exact is not None:
         plt.sca(axsTop[2, 1])
         exact.plot(marker=marker) 
         plt.title('Exact solution')
