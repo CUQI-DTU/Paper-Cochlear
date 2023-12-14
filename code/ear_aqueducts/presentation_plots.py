@@ -833,7 +833,7 @@ plt.gca().legend_.remove()
 #---------------------- mean-reconstructed data (constant inference)
 plt.sca(axs[1])
 plot_time_series(times, locations, mean_recon_data, loc='upper right', ncol=2)
-
+plt.gca().legend_.remove()
 
 #---------------------- mean-reconstructed data (variable inference)
 plt.sca(axs[2])
@@ -844,3 +844,5 @@ experiment_par, locations, times =\
     read_experiment_data(dir_name, tag, const=const)
 
 plot_time_series(times, locations, mean_recon_data, loc='upper right', ncol=2)
+plt.gca().legend_.remove()
+# %%

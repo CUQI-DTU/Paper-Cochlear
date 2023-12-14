@@ -11,7 +11,9 @@ except:
 def plot_time_series(times, locations, data, loc=None, ncol=1):
 
     # Plot data
-    color = ['r', 'g', 'b', 'k', 'm', 'c']
+    # create color array of 13 colors
+    color = ['r', 'g', 'b', 'k', 'm', 'c', 'y', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive']
+
     legends = ['loc = '+"{:.0f}".format(obs) for obs in locations]
     lines = []
     for i in range(len(locations)):
