@@ -43,7 +43,7 @@ print(tag)
 
 #%% STEP 2: Read time and location arrays
 #----------------------------------------
-real_times, real_locations, real_data = read_data_files(args)
+real_times, real_locations, real_data, real_std_data = read_data_files(args)
 # The left boundary condition is given by the data  
 real_bc = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 # locations, including added locations that can be used in synthetic 
@@ -138,7 +138,8 @@ if args.data_type == 'synthetic_from_diffusion':
 #%% STEP 13: Create the data distribution
 #----------------------------------------
 s_noise = set_the_noise_std(
-    args.data_type, args.noise_level, exact_data, real_data, G_cont2D)
+    args.data_type, args.noise_level, exact_data,
+    real_data, real_std_data, G_cont2D)
 y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 
 #%% STEP 14: Specify the data for the inference

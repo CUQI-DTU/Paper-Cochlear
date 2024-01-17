@@ -66,9 +66,9 @@ def parse_commandline_args(myargs):
                         default=20,
                         help='Number of burn-in samples')
     parser.add_argument('-noise_level', metavar='noise_level', 
-                        type=float,
+                        type=str,
                         default=0.1,
-                        help='Noise level for data')
+                        help='Noise level for data, set to "from_data" to read noise level from data')
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
@@ -93,7 +93,7 @@ def parse_commandline_args(myargs):
     return args
 
 def read_data_files(args):
-    """Function to read times array, locations array, concentration data from
+    """Function to read times array, locations array, concentration data, std data from
     file. 
     Parameters
     ----------
@@ -112,6 +112,10 @@ def read_data_files(args):
         real_times = constr_file['time'].values*60
         CA_list = ['CA'+str(i+1) for i in range(args.num_CA)]
         real_data = constr_file[CA_list].values.T.ravel()
+
+        ## Read std data
+        CA_std_list = [item+' std' for item in CA_list]
+        real_std_data = constr_file[CA_std_list].values.T.ravel()
   
     elif args.num_ST > 0: # CA and ST data
         print('CA and ST data.')
@@ -129,7 +133,11 @@ def read_data_files(args):
         real_times = constr_file['time'].values*60
         real_data = constr_file[CA_CT_list].values.T.ravel()
 
-    return real_times, real_locations, real_data
+        ## Read std data
+        CA_CT_std_list = [item+' std' for item in CA_CT_list]
+        real_std_data = constr_file[CA_CT_std_list].values.T.ravel()
+
+    return real_times, real_locations, real_data, real_std_data
 
 def create_domain_geometry(grid, coefficient_type):
     """Function to create domain geometry. """
@@ -224,19 +232,31 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
     exact_data = A(exact_x)
     return exact_x, exact_data
 
-def set_the_noise_std(data_type, noise_level, exact_data, real_data, G_cont2D):
+def set_the_noise_std(
+        data_type, noise_level, exact_data,
+        real_data, real_std_data, G_cont2D):
     """Function to set the noise standard deviation. """
-    ## Noise standard deviation 
-    if data_type == 'synthetic_from_diffusion':
-        s_noise = noise_level \
-                  *np.linalg.norm(exact_data) \
-                  *np.sqrt(1/G_cont2D.par_dim)
-    elif data_type == 'real':
-        s_noise = noise_level \
-                  *np.linalg.norm(real_data) \
-                  *np.sqrt(1/G_cont2D.par_dim)
+    # Use noise levels read from the file
+    if noise_level == "from_data":
+        ## Noise standard deviation
+        s_noise = real_std_data
+    # Use noise level specified in the command line
     else:
-        raise Exception('Data type not supported')
+        try:
+            noise_level = float(noise_level)
+        except:
+            raise Exception('Noise level not supported')
+        ## Noise standard deviation 
+        if data_type == 'synthetic_from_diffusion':
+            s_noise = noise_level \
+                      *np.linalg.norm(exact_data) \
+                      *np.sqrt(1/G_cont2D.par_dim)
+        elif data_type == 'real':
+            s_noise = noise_level \
+                      *np.linalg.norm(real_data) \
+                      *np.sqrt(1/G_cont2D.par_dim)
+        else:
+            raise Exception('Data type not supported')
     
     return s_noise
 
