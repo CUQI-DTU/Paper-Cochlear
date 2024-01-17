@@ -12,9 +12,6 @@ from cuqi.distribution import Gaussian, JointDistribution
 from cuqi.geometry import Continuous2D
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel
-from my_utils import create_experiment_tag,\
-    plot_experiment,\
-    save_experiment_data
 from advection_diffusion_inference_utils import parse_commandline_args,\
     read_data_files,\
     create_domain_geometry,\
@@ -22,7 +19,10 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     create_prior_distribution,\
     create_exact_solution_and_data,\
     set_the_noise_std,\
-    sample_the_posterior
+    sample_the_posterior,\
+    create_experiment_tag,\
+    plot_experiment,\
+    save_experiment_data
 
 print('cuqi version:')
 print(cuqi.__version__)
