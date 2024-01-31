@@ -115,7 +115,8 @@ class TimeDependantHeat:
 
 
         while t > self.t_init- .5*self.dt:
-            if t > self.t_1 - .5*self.dt: 
+            if np.any(np.isclose(t, self.obs_times)): 
+                print('t: ', t)
                 u = self.fwd_sol.solution_at_time(t)
                 rhs_i = rhs.solution_at_time(t)
 
@@ -341,23 +342,29 @@ if __name__ == "__main__":
             diff_i_func = dl.Function(Vh_state, diff_i)
             diff_i_func_pts = dl.project(fwd.obs_point_src*diff_i_func, Vh_state)
             diff_i = diff_i_func_pts.vector()
-            if fwd.sim_times[i] > t_1-0.5*dt:
+            if np.any(np.isclose(fwd.sim_times[i], fwd.obs_times)):
+                #print('t: ', fwd.sim_times[i])
                 cost += dt*0.5*diff_i.inner(fwd.M*diff_i)
         return cost
-    verify_grad = True
-    if verify_grad:
+    verify_grad_const = True
+    if verify_grad_const:
         # gradient check using scipy.optimize.approx_fprime
         from scipy.optimize import approx_fprime
-        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-8)
+        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-5)
+        grad_scipy_const_func = dl.Function(Vh_parameter)
+        grad_scipy_const_func.vector()[:] = grad_scipy[:]
 
         # Plot the gradients
         plt.figure()
-        dl.plot(dl.Function(Vh_parameter, grad))
+        dl.plot(dl.Function(Vh_parameter, grad), label='adj')
+        dl.plot(grad_scipy_const_func, label='scipy')
         plt.title('gradient at constant parameter')
-        plt.figure()
-        plt.plot(grad_scipy[::-1])
-        plt.title('scipy gradient at constant parameter')
-        # 
+        plt.legend()
+
+
+        #
+    verify_grad_true = False
+    if verify_grad_true: 
         # compute gradient at true
         fwd.solveFwd(k_vec)
         rhs = compute_rhs(fwd)
@@ -372,7 +379,8 @@ if __name__ == "__main__":
         plt.plot(grad_scipy_true[::-1]) 
         plt.title('scipy gradient at true')
 
-        #
+    verify_grad_random = False
+    if verify_grad_random: 
         random_k = dl.Vector()
         fwd.M.init_vector(random_k, 0)
         random_k.set_local(np.random.rand(random_k.local_size()))
