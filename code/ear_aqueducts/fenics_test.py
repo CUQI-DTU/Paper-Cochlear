@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 
 class TimeDependantHeat:    
-    def __init__(self, mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f):
+    def __init__(self, mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, obs_locations=None, obs_times=None):
         
         bc_tol = 1E-14
         self.u0 = u0 # u0: Initial condition
@@ -19,6 +19,14 @@ class TimeDependantHeat:
         self.t_1 = t_1 # observation starting time
         self.dt = dt
         self.sim_times = np.arange(self.t_init, self.t_final+.5*self.dt, self.dt)
+        self.obs_locations = obs_locations
+        # expression 1 at the locations
+        self.obs_point_src = dl.Function(Vh_state)
+        for loc in self.obs_locations:
+            p = dl.PointSource(Vh_state,dl.Point(loc,0),1.0)
+            p.apply(self.obs_point_src.vector())
+
+        self.obs_times = obs_times
             
         class LeftBoundary(dl.SubDomain):
             def inside(self, x, on_boundary):  
@@ -112,6 +120,7 @@ class TimeDependantHeat:
                 rhs_i = rhs.solution_at_time(t)
 
                 obs_rhs =  dl.Function(self.Vh_state, rhs_i)
+                obs_rhs = dl.project(obs_rhs*self.obs_point_src, self.Vh_state)
             else:
                 obs_rhs = dl.Constant(0.0)
             pold_func = dl.Function(self.Vh_state, pold)
@@ -224,12 +233,6 @@ class TimeDependantSolution:
         for sol, time in self:
             out.add(sol.copy(), time)
         return out
-    
-
-
-
- 
-
 
        
 if __name__ == "__main__":
@@ -258,7 +261,9 @@ if __name__ == "__main__":
     # data
 
     # CREATE TimeDependantHeat object
-    fwd = TimeDependantHeat(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f)
+    locations = [0.1, 0.2, 0.3, 0.4, 0.5]
+    fwd = TimeDependantHeat(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, locations)
+    fwd.obs_times = fwd.sim_times[[10, 20, 30, 40, 50]]
 
     # Create parameter vector as a sine function
     #k = dl.Expression('sin(2*pi*x[0])+1.1', degree=1)
@@ -333,53 +338,57 @@ if __name__ == "__main__":
             data_i = data_exact[i][0]
             diff_i = u_i.copy()
             diff_i.axpy(-1, data_i)
+            diff_i_func = dl.Function(Vh_state, diff_i)
+            diff_i_func_pts = dl.project(fwd.obs_point_src*diff_i_func, Vh_state)
+            diff_i = diff_i_func_pts.vector()
             if fwd.sim_times[i] > t_1-0.5*dt:
                 cost += dt*0.5*diff_i.inner(fwd.M*diff_i)
         return cost
-    
-    # gradient check using scipy.optimize.approx_fprime
-    from scipy.optimize import approx_fprime
-    grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-8)
+    verify_grad = True
+    if verify_grad:
+        # gradient check using scipy.optimize.approx_fprime
+        from scipy.optimize import approx_fprime
+        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-8)
 
-    # Plot the gradients
-    plt.figure()
-    dl.plot(dl.Function(Vh_parameter, grad))
-    plt.title('gradient at constant parameter')
-    plt.figure()
-    plt.plot(grad_scipy[::-1])
-    plt.title('scipy gradient at constant parameter')
-    # %%
-    # compute gradient at true
-    fwd.solveFwd(k_vec)
-    rhs = compute_rhs(fwd)
-    fwd.solveAdj(k_vec, rhs)
-    grad_true = fwd.evalGradientParameter(k_vec)
-    plt.figure()
-    dl.plot(dl.Function(Vh_parameter, grad_true))
-    plt.title('gradient at true')
-    #%%
-    grad_scipy_true = approx_fprime(k_vec.get_local(), cost, 1e-8)
-    plt.figure()
-    plt.plot(grad_scipy_true[::-1]) 
-    plt.title('scipy gradient at true')
+        # Plot the gradients
+        plt.figure()
+        dl.plot(dl.Function(Vh_parameter, grad))
+        plt.title('gradient at constant parameter')
+        plt.figure()
+        plt.plot(grad_scipy[::-1])
+        plt.title('scipy gradient at constant parameter')
+        # 
+        # compute gradient at true
+        fwd.solveFwd(k_vec)
+        rhs = compute_rhs(fwd)
+        fwd.solveAdj(k_vec, rhs)
+        grad_true = fwd.evalGradientParameter(k_vec)
+        plt.figure()
+        dl.plot(dl.Function(Vh_parameter, grad_true))
+        plt.title('gradient at true')
+        #
+        grad_scipy_true = approx_fprime(k_vec.get_local(), cost, 1e-8)
+        plt.figure()
+        plt.plot(grad_scipy_true[::-1]) 
+        plt.title('scipy gradient at true')
 
-    #%%
-    random_k = dl.Vector()
-    fwd.M.init_vector(random_k, 0)
-    random_k.set_local(np.random.rand(random_k.local_size()))
-    # compute gradient at random
-    fwd.solveFwd(random_k)
-    rhs = compute_rhs(fwd)
-    fwd.solveAdj(random_k, rhs)
-    grad_random = fwd.evalGradientParameter(random_k)
-    plt.figure()
-    dl.plot(dl.Function(Vh_parameter, grad_random))
-    plt.title('gradient at random')
-    
-    grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-8)
-    plt.figure()
-    plt.plot(grad_scipy_random[::-1])
-    plt.title('scipy gradient at random')
+        #
+        random_k = dl.Vector()
+        fwd.M.init_vector(random_k, 0)
+        random_k.set_local(np.random.rand(random_k.local_size()))
+        # compute gradient at random
+        fwd.solveFwd(random_k)
+        rhs = compute_rhs(fwd)
+        fwd.solveAdj(random_k, rhs)
+        grad_random = fwd.evalGradientParameter(random_k)
+        plt.figure()
+        dl.plot(dl.Function(Vh_parameter, grad_random))
+        plt.title('gradient at random')
+        
+        grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-8)
+        plt.figure()
+        plt.plot(grad_scipy_random[::-1])
+        plt.title('scipy gradient at random')
 
 
 
