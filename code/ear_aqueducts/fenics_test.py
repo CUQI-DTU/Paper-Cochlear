@@ -4,6 +4,8 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import time
+#import cuqi
+#import cuqipy_fenics
 
 class TimeDependantHeat:    
     def __init__(self, mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, obs_locations=None, obs_times=None):
@@ -25,6 +27,7 @@ class TimeDependantHeat:
         for loc in self.obs_locations:
             p = dl.PointSource(Vh_state,dl.Point(loc,0),1.0)
             p.apply(self.obs_point_src.vector())
+        #self.obs_point_src.vector()[:] = 1
 
         self.obs_times = obs_times
             
@@ -111,12 +114,9 @@ class TimeDependantHeat:
         t = self.t_final
         self.adj_sol.add(pold, t)
   
-
-
-
         while t > self.t_init- .5*self.dt:
             if np.any(np.isclose(t, self.obs_times)): 
-                print('t: ', t)
+                #print('t: ', t)
                 u = self.fwd_sol.solution_at_time(t)
                 rhs_i = rhs.solution_at_time(t)
 
@@ -235,10 +235,49 @@ class TimeDependantSolution:
             out.add(sol.copy(), time)
         return out
 
-       
+
+#class CUQIpyFwd:
+#    def __init__(self, *args, **kwargs):
+#        self.fwd = TimeDependantHeat(*args, **kwargs)
+#
+#    def forward(self, k):
+#        self.fwd.solveFwd(k.vector())
+#        #extract obs in an array
+#        obs = np.zeros((len(self.fwd.obs_locations), len(self.fwd.obs_times)) )
+#        for i, obs_t in enumerate(self.fwd.obs_times):
+#            #print ('obs_t: ', obs_t)
+#            #print ('i', i )
+#            sol_t = self.fwd.fwd_sol.solution_at_time(obs_t)
+#            sol_t_func = dl.Function(self.fwd.Vh_state, sol_t)
+#            for j, loc in enumerate(self.fwd.obs_locations):
+#                obs[j, i] = sol_t_func(dl.Point(loc,0))
+#        return obs
+#    
+#    def compute_rhs(self, dirc):
+#        ts = self.fwd.obs_times
+#        locs = self.fwd.obs_locations
+#        dirc = dirc.reshape((len(locs), len(ts)))
+#        rhs = TimeDependantSolution()
+#        for i, t in enumerate(ts):
+#            rhs_fun_i = dl.Function(Vh_state)
+#            for j, loc in enumerate(locs):
+#                p = dl.PointSource(Vh_state,dl.Point(loc,0),dirc[j,i])
+#                p.apply(rhs_fun_i.vector())
+#            rhs.add(rhs_fun_i.vector(), t)
+#        return rhs
+#    
+#    def gradient(self, dirc, k):
+#
+#        self.fwd.solveFwd(k.vector())
+#        rhs = self.compute_rhs(dirc)
+#        self.fwd.solveAdj(k.vector(), rhs)
+#        grad = self.fwd.evalGradientParameter(k.vector())
+#        return dl.Function(Vh_parameter, grad)
+
+
 if __name__ == "__main__":
     # CREATE 1D mesh
-    mesh = dl.IntervalMesh(100, 0, 1.0)
+    mesh = dl.IntervalMesh(100, 0, 100)
     # CREATE function space for the parameter
     Vh_parameter = dl.FunctionSpace(mesh, 'CG', 1)
     # CREATE function space for the state
@@ -246,8 +285,8 @@ if __name__ == "__main__":
 
     # Start and final time
     t_init = 0
-    t_final = 0.01
-    dt = 0.0001
+    t_final = 12 # 0.01
+    dt = 1
     # Observation starting time
     t_1 = 0.00
 
@@ -262,9 +301,9 @@ if __name__ == "__main__":
     # data
 
     # CREATE TimeDependantHeat object
-    locations = [0.1, 0.2, 0.3, 0.4, 0.5]
+    locations = [5]#[0.1, 0.2, 0.3, 0.4, 0.5]
     fwd = TimeDependantHeat(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, locations)
-    fwd.obs_times = fwd.sim_times[[10, 20, 30, 40, 50]]
+    fwd.obs_times = fwd.sim_times[[5, 10]]
 
     # Create parameter vector as a sine function
     #k = dl.Expression('sin(2*pi*x[0])+1.1', degree=1)
@@ -340,7 +379,7 @@ if __name__ == "__main__":
             diff_i = u_i.copy()
             diff_i.axpy(-1, data_i)
             diff_i_func = dl.Function(Vh_state, diff_i)
-            diff_i_func_pts = dl.project(fwd.obs_point_src*diff_i_func, Vh_state)
+            diff_i_func_pts = dl.project(diff_i_func*fwd.obs_point_src, Vh_state)
             diff_i = diff_i_func_pts.vector()
             if np.any(np.isclose(fwd.sim_times[i], fwd.obs_times)):
                 #print('t: ', fwd.sim_times[i])
@@ -350,7 +389,7 @@ if __name__ == "__main__":
     if verify_grad_const:
         # gradient check using scipy.optimize.approx_fprime
         from scipy.optimize import approx_fprime
-        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-5)
+        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-10)
         grad_scipy_const_func = dl.Function(Vh_parameter)
         grad_scipy_const_func.vector()[:] = grad_scipy[:]
 
@@ -361,8 +400,6 @@ if __name__ == "__main__":
         plt.title('gradient at constant parameter')
         plt.legend()
 
-
-        #
     verify_grad_true = False
     if verify_grad_true: 
         # compute gradient at true
@@ -385,19 +422,99 @@ if __name__ == "__main__":
         fwd.M.init_vector(random_k, 0)
         random_k.set_local(np.random.rand(random_k.local_size()))
         # compute gradient at random
+        # time adj gradient
+        start = time.time()
         fwd.solveFwd(random_k)
         rhs = compute_rhs(fwd)
         fwd.solveAdj(random_k, rhs)
         grad_random = fwd.evalGradientParameter(random_k)
+        end = time.time()
+        print('adj gradient time: ', end-start)
+
         plt.figure()
         dl.plot(dl.Function(Vh_parameter, grad_random))
         plt.title('gradient at random')
         
-        grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-8)
+        # time scipy gradient
+        start = time.time()
+        grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-14)
+        end = time.time()
+        print('scipy gradient time: ', end-start)
         plt.figure()
         plt.plot(grad_scipy_random[::-1])
         plt.title('scipy gradient at random')
 
 
-
+#    #%% Test CUQIpyFwd
+#    cuqipy_fwd = CUQIpyFwd(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, locations, fwd.obs_times)
+#    #obs = cuqipy_fwd.forward(k)
+#    #grad = cuqipy_fwd.gradient(k_vec)
+#    
+#    from advection_diffusion_inference_utils import plot_time_series
+#    #plot_time_series(cuqipy_fwd.fwd.obs_times, cuqipy_fwd.fwd.obs_locations, obs)
+#    
+#    #%% domain geometry
+#    from cuqipy_fenics.geometry import FEniCSContinuous,\
+#    MaternKLExpansion
+#    G_FEM = FEniCSContinuous(Vh_parameter)
+#        
+#    # The KL parameterization
+#    G_KL = MaternKLExpansion(G_FEM, length_scale=0.2, num_terms=2)
+#    
+#    #%% Create range geometry
+#    from cuqi.geometry import Continuous2D
+#    G_cont = Continuous2D((locations, fwd.obs_times))
+#    
+#    # %%
+#    # forward model
+#    A = cuqi.model.Model(forward=cuqipy_fwd.forward, gradient=cuqipy_fwd.gradient, range_geometry=G_cont, domain_geometry=G_KL)
+#    
+#    # %% 
+#    prior = cuqi.distribution.Gaussian(mean=0.0, cov=50**2, geometry=G_KL)
+#    #%%
+#    np.random.seed(0)
+#    x_true = prior.sample()
+#    x_true.plot(title='True parameter')
+#    data = A(x_true)
+#    plt.figure()
+#    plot_time_series(cuqipy_fwd.fwd.obs_times, cuqipy_fwd.fwd.obs_locations, data.funvals)
+#    
+#    #%% 
+#    # Likelihood
+#    s_noise = 0.003
+#    y = cuqi.distribution.Gaussian(A(prior), s_noise**2, geometry=G_cont)
+#    
+#    # %%
+#    noisy_data = y(prior=x_true).sample()
+#    plt.figure()
+#    plot_time_series(cuqipy_fwd.fwd.obs_times, cuqipy_fwd.fwd.obs_locations, noisy_data.funvals)
+#    norm_rel_noise = np.linalg.norm(noisy_data.funvals-data.funvals)/np.linalg.norm(data.funvals)
+#    plt.title('Relative noise norm: {:.2f}%'.format(norm_rel_noise*100))
+#    # %%
+#    # posterior
+#    joint = cuqi.distribution.JointDistribution(prior, y)
+#    posterior = joint(y=noisy_data)
+#    # %%
+#    # sample from the posterior using NUTS
+#    from cuqi.sampler import NUTS
+#    sampler = NUTS(posterior, max_depth=4)
+#    #samples = sampler.sample(10, 5 )
+#    # %%
+#    #check posterior grad
+#    np.random.seed(2)
+#    prior_sample_i = prior.sample()
+#    g_adj = posterior.gradient(prior_sample_i)
+#    
+#    #%%
+#    from scipy.optimize import approx_fprime
+#    def cost(x):
+#        return posterior.logpdf(x)
+#    g_FD = approx_fprime(prior_sample_i, cost, 1e-8)
+#
+#    plt.figure()
+#    g_adj.plot(title='adjoint gradient')
+#    plt.figure()
+#    dl.plot(G_KL.par2fun(g_FD))
+#    plt.title('FD gradient')
 # %%
+#
