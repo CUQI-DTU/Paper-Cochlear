@@ -4,47 +4,74 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import time
+import scipy as sp
+from scipy.interpolate import interp1d
 #import cuqi
 #import cuqipy_fenics
 
 class TimeDependantHeat:    
-    def __init__(self, mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, obs_locations=None, obs_times=None):
-        
-        bc_tol = 1E-14
-        self.u0 = u0 # u0: Initial condition
+    def __init__(self, L, nx, t_init, t_final, dt, u0, f, bc_exp, bc_domain, obs_locations=None, obs_times=None):
+        self.L = L
+        self.nx = nx
+        self.mesh = dl.IntervalMesh(nx, 0, L)
+        # add nodes close to loc
 
-        self.mesh = mesh
-        self.Vh_parameter = Vh_parameter
-        self.Vh_state = Vh_state
+        level = 2
+        print("####", obs_locations)
+        for level_i in range(level):
+            markers = dl.MeshFunction("bool", self.mesh, self.mesh.topology().dim(), False)
+            for cell in dl.cells(self.mesh):
+                for loc in obs_locations:
+                    markers[cell] = markers[cell] or cell.contains(dl.Point(loc))
+            print("#####sum", sum(markers.array()))
+
+            self.mesh = dl.refine(self.mesh, markers)
+        self.mesh.coordinates().sort(0)
+
+        # create new mesh with sorted nodes
+        mesh2 = dl.Mesh()
+        editor = dl.MeshEditor()
+        editor.open(mesh2, 'interval', 1, 1)
+        editor.init_vertices(self.mesh.num_vertices())
+        editor.init_cells(self.mesh.num_cells())
+
+        for i, coor in enumerate(self.mesh.coordinates()):
+            editor.add_vertex(i, coor)
+            if i > 0:
+                editor.add_cell(i-1, [i-1, i])
+        editor.close()
+        mesh2.init()
+        self.mesh = mesh2
+
+        #coor = fwd.mesh.coordinates().sort(0)
+
+        self.Vh_parameter = dl.FunctionSpace(self.mesh, 'CG', 1)
+        self.Vh_state = dl.FunctionSpace(self.mesh, 'CG', 1)
+        
+        # Initial condition
+        self.u0 = dl.interpolate(u0, self.Vh_state)
+
+        # Source term
+        self.f = dl.interpolate(f, self.Vh_state)
         self.t_init = t_init
         self.t_final = t_final
-        self.t_1 = t_1 # observation starting time
         self.dt = dt
         self.sim_times = np.arange(self.t_init, self.t_final+.5*self.dt, self.dt)
         self.obs_locations = obs_locations
-        # expression 1 at the locations
-        self.obs_point_src = dl.Function(Vh_state)
-        for loc in self.obs_locations:
-            p = dl.PointSource(Vh_state,dl.Point(loc,0),1.0)
-            p.apply(self.obs_point_src.vector())
-        #self.obs_point_src.vector()[:] = 1
 
         self.obs_times = obs_times
-            
-        class LeftBoundary(dl.SubDomain):
-            def inside(self, x, on_boundary):  
-                return on_boundary and abs(x[0]) < bc_tol
+        self.f_dirac = self.mesh.hmin()*1.1
+        self.smooth_f = 0
 
-        Gamma_left = LeftBoundary()
+        self.bc_domain = bc_domain
        
         # Dirichlet BC for the forward and the adjoint operators
-        u_exp  = dl.Expression("0.1", degree=1)
-        self._state_bcs = dl.DirichletBC(Vh_state, u_exp, Gamma_left)
+        self._state_bcs = dl.DirichletBC(self.Vh_state, bc_exp, self.bc_domain)
         p_exp  = dl.Constant(0.0)
-        self._adjoint_bcs = dl.DirichletBC(Vh_state, p_exp, Gamma_left)
+        self._adjoint_bcs = dl.DirichletBC(self.Vh_state, p_exp, self.bc_domain)
 
-        v = dl.TestFunction(Vh_state)
-        u = dl.TrialFunction(Vh_state)
+        v = dl.TestFunction(self.Vh_state)
+        u = dl.TrialFunction(self.Vh_state)
         
         self.M_expr = u*v*dl.dx # mass matrix expression
         self._E_expr = None # Poisson operator
@@ -117,11 +144,13 @@ class TimeDependantHeat:
         while t > self.t_init- .5*self.dt:
             if np.any(np.isclose(t, self.obs_times)): 
                 #print('t: ', t)
-                u = self.fwd_sol.solution_at_time(t)
-                rhs_i = rhs.solution_at_time(t)
 
-                obs_rhs =  dl.Function(self.Vh_state, rhs_i)
-                obs_rhs = dl.project(obs_rhs*self.obs_point_src, self.Vh_state)
+                obs_rhs = rhs.solution_at_time(t)
+                obs_rhs = dl.Function(self.Vh_state, obs_rhs)
+
+
+                #obs_rhs =  dl.Function(self.Vh_state, rhs_i)
+                #obs_rhs = dl.project(obs_rhs*self.obs_point_src, self.Vh_state)
             else:
                 obs_rhs = dl.Constant(0.0)
             pold_func = dl.Function(self.Vh_state, pold)
@@ -145,16 +174,16 @@ class TimeDependantHeat:
     def applyCt(self, x):
         #dp adj
         #out
-        out = dl.Function(self.Vh_state).vector()
-        product = dl.Vector()
-        self.M.init_vector(product, 0)
+        out = dl.Function(self.Vh_parameter).vector()
+        product = dl.Function(self.Vh_parameter).vector()
+        #self.M.init_vector(product, 0)
         out.zero()
 
         Ph = self.Vh_parameter
         Vh = self.Vh_state
 
         k_test = dl.TestFunction(Ph)
-        v_trial = dl.TrialFunction(Ph)
+        v_trial = dl.TrialFunction(Vh)
         t = self.t_init
         k = x
         k_func = dl.Function(self.Vh_parameter, k)
@@ -162,9 +191,9 @@ class TimeDependantHeat:
         while t < self.t_final -0.5 *self.dt:
             t += self.dt
 
-            u_func = [u[0] for u in self.fwd_sol if np.isclose(u[1], t)]
-            assert len(u_func) == 1
-            u_func = dl.Function(Vh_state, u_func[0])
+            u_func = self.fwd_sol.solution_at_time(t)
+
+            u_func = dl.Function(self.Vh_state, u_func)
 
             Ct_i = dl.assemble(self.dt*dl.exp(k_func)*k_test*\
                               dl.inner(dl.nabla_grad(u_func),\
@@ -175,9 +204,11 @@ class TimeDependantHeat:
             self._adjoint_bcs.zero_columns(Ct_i, dummy)
         
             product.zero()
-            dp_current = [dp[0] for dp in self.adj_sol if np.isclose(dp[1], t)]
-            assert len(dp_current) == 1
-            dp_current = dp_current[0]
+            dp_current = self.adj_sol.solution_at_time(t)
+
+            #[dp[0] for dp in self.adj_sol if np.isclose(dp[1], t)]
+            #assert len(dp_current) == 1
+            #dp_current = dp_current[0]
 
             Ct_i.mult(dp_current, product)
             out.axpy(1.0, product)
@@ -195,7 +226,10 @@ class TimeDependantHeat:
 
 
 
+
+
            #p.set_min_max(-1*MAX, 1*MAX)
+
 class TimeDependantSolution:
     def __init__(self):
         self._sol = []
@@ -234,6 +268,15 @@ class TimeDependantSolution:
         for sol, time in self:
             out.add(sol.copy(), time)
         return out
+    
+    def max(self):
+        # find the max value 
+        max=-np.inf
+        for sol in self._sol:
+            max_temp = np.max(sol.max())
+            if max_temp > max:
+                max = max_temp
+        return max
 
 
 #class CUQIpyFwd:
@@ -274,41 +317,91 @@ class TimeDependantSolution:
 #        grad = self.fwd.evalGradientParameter(k.vector())
 #        return dl.Function(Vh_parameter, grad)
 
+#https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-for-a-dataset
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
 
+# approximate dirac at loc = [2, 3]
+def dirac_approx(x, loc, vals, f=1, smooth_f=20):
+    h = f
+    funval = sum([np.exp(-(x-loc_i)**2/h**2)*vals[i] for i, loc_i in enumerate(loc)])
+    #conv = np.convolve(funval)
+    return smooth(funval,  int(f*smooth_f))
+
+# Fenics expression for the dirac
+class Dirac_old(dl.UserExpression):
+    def __init__(self, loc, f, vals, L, smooth_f, **kwargs):
+        super().__init__(**kwargs)
+        grid = np.linspace(0, L, 1000)
+        funvals = dirac_approx(grid, loc=loc, vals=vals, f=f, smooth_f=smooth_f)
+        self.funvals = funvals
+        self.func = interp1d(
+            grid, funvals, kind='linear',
+            fill_value='extrapolate')
+
+
+    def eval(self, values, x):
+        values[0] = self.func(x[0])
+
+    def value_shape(self):
+        return ()
+
+class Dirac(dl.UserExpression):
+    def __init__(self, loc, f, vals, L, smooth_f, **kwargs):
+        super().__init__(**kwargs)
+        grid = np.linspace(0, L, 1000)
+        self.loc = np.array(loc)
+        self.vals = np.array(vals)
+        self.f = f
+
+
+
+    def eval(self, values, x):
+        # if x is close to loc, return the corresponding value
+        idx = np.abs(x[0]-self.loc) < self.f
+        if np.any(idx):
+            values[0] = self.vals[idx][0]
+        else:
+            values[0] = 0
+
+
+    def value_shape(self):
+        return ()
+    
 if __name__ == "__main__":
     # CREATE 1D mesh
-    mesh = dl.IntervalMesh(100, 0, 100)
-    # CREATE function space for the parameter
-    Vh_parameter = dl.FunctionSpace(mesh, 'CG', 1)
-    # CREATE function space for the state
-    Vh_state = dl.FunctionSpace(mesh, 'CG', 1)
+    L = 50
+    nx = 100
 
     # Start and final time
     t_init = 0
     t_final = 12 # 0.01
     dt = 1
-    # Observation starting time
-    t_1 = 0.00
+    
+    bc_tol = 1E-14
+    class LeftBoundary(dl.SubDomain):
+        def inside(self, x, on_boundary):  
+            return on_boundary and abs(x[0]) < bc_tol
+        
+    bc_domain = LeftBoundary()  
+    bc_exp = dl.Expression('1', degree=1)  
 
-    # Initial condition
-    u0 = dl.Expression('0', degree=1)
-    u0 = dl.interpolate(u0, Vh_state)
-
-    # Source term
-    f = dl.Expression('0', degree=1)
-    f = dl.interpolate(f, Vh_state)
 
     # data
 
     # CREATE TimeDependantHeat object
-    locations = [5]#[0.1, 0.2, 0.3, 0.4, 0.5]
-    fwd = TimeDependantHeat(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, locations)
+    locations = [ 6, 15]#[0.1, 0.2, 0.3, 0.4, 0.5]
+    u0 = dl.Expression('0', degree=1)
+    f = dl.Expression('0', degree=1)
+    fwd = TimeDependantHeat(L, nx, t_init, t_final, dt, u0, f, bc_exp, bc_domain, locations,)
     fwd.obs_times = fwd.sim_times[[5, 10]]
 
     # Create parameter vector as a sine function
     #k = dl.Expression('sin(2*pi*x[0])+1.1', degree=1)
-    k = dl.Expression('std::log(1.1 +sin(x[0]*2*pi))', degree=1)
-    k_fun = dl.interpolate(k, Vh_parameter)
+    k = dl.Expression('std::log(1.1 +sin((x[0]/L*2)*2*pi))', L=L, degree=1)
+    k_fun = dl.interpolate(k, fwd.Vh_parameter)
     k_vec = k_fun.vector()
 
     # Solve the fwd problem
@@ -319,24 +412,24 @@ if __name__ == "__main__":
     print('fwd solve time: ', end-start)
 
     fwd.plotTimes(fwd.sim_times, fwd.fwd_sol)
-    plt.ylim(-0.1, 0.15)
+    plt.ylim(-0.1, fwd.fwd_sol.max()*1.1)
     plt.title('Forward solution, for exact parameter')
 
     data_exact = fwd.fwd_sol.copy()
     fwd.fwd_sol.clear()
 
     k_const = dl.Expression('0', degree=1)
-    k_const = dl.interpolate(k_const, Vh_parameter).vector()
+    k_const = dl.interpolate(k_const, fwd.Vh_parameter).vector()
 
     # Solve the fwd problem
     fwd.solveFwd(k_const)
     plt.figure()
     fwd.plotTimes(fwd.sim_times, fwd.fwd_sol)
-    plt.ylim(-0.1, 0.15)
+    plt.ylim(-0.01, fwd.fwd_sol.max()*1.1)
     plt.title('Forward solution, for constant parameter')
 
     # Solve the adj problem
-    def compute_rhs(fwd):
+    def compute_rhs_old(fwd):
         rhs = TimeDependantSolution()
         for i in range(len(fwd.fwd_sol)):
             rhs_i = fwd.fwd_sol[i][0].copy()
@@ -344,12 +437,42 @@ if __name__ == "__main__":
             rhs_i *= -dt
             rhs.add(rhs_i, fwd.fwd_sol[i][1])
         return rhs
+    
+    def compute_rhs(fwd):
+        # k from numpy array to dolfin vector
 
+
+        rhs = TimeDependantSolution()
+        for i in range(len(fwd.fwd_sol)):
+            if np.any(np.isclose(fwd.sim_times[i], fwd.obs_times)):
+                u_i = fwd.fwd_sol[i][0]
+                data_i = data_exact[i][0]
+                diff_i = u_i.copy()
+                diff_i.axpy(-1, data_i)
+                vals = []
+                diff_i_func = dl.Function(fwd.Vh_state, diff_i)
+                for loc in fwd.obs_locations:
+                    vals.append(diff_i_func(dl.Point(loc,0)))
+                diff_i_func_pts = dl.interpolate(Dirac(loc=fwd.obs_locations,                   
+                 f=fwd.f_dirac, vals=vals, L=fwd.L, degree=1, smooth_f=fwd.smooth_f), fwd.Vh_state)
+
+                #diff_i_func = dl.Function(Vh_state, diff_i)
+                #diff_i_func_pts = dl.project(diff_i_func*fwd.obs_point_src, Vh_state)
+                diff_i = diff_i_func_pts.vector()
+
+                #print('t: ', fwd.sim_times[i])
+                rhs.add(-1*dt*diff_i, fwd.sim_times[i])
+                # No multiplication by M
+
+                #cost += dt*0.5*diff_i.inner(fwd.M*diff_i)
+                print(fwd.sim_times[i])
+        return rhs
     # plot rhs
     plt.figure()
     rhs = compute_rhs(fwd)
-    fwd.plotTimes(fwd.sim_times, rhs)
+    fwd.plotTimes(fwd.obs_times, rhs)
     plt.title('rhs')
+    plt.ylim([-0.01, 0.1])
     
     # time the adj solve
     start = time.time()
@@ -360,6 +483,8 @@ if __name__ == "__main__":
     # Plot the adjoint solution
     plt.figure()
     fwd.plotTimes(fwd.sim_times, fwd.adj_sol)
+    plt.ylim([-0.01, fwd.adj_sol.max()*1.1])
+    plt.title('Adjoint solution, for constant parameter')
 
 
     # Compute the gradient
@@ -369,36 +494,46 @@ if __name__ == "__main__":
     # cost function
     def cost(k):
         # k from numpy array to dolfin vector
-        k_v = dl.Function(Vh_parameter).vector()
+        k_v = dl.Function(fwd.Vh_parameter).vector()
         k_v[:] = k[:]
         fwd.solveFwd(k_v)
         cost = 0
         for i in range(len(fwd.fwd_sol)):
-            u_i = fwd.fwd_sol[i][0]
-            data_i = data_exact[i][0]
-            diff_i = u_i.copy()
-            diff_i.axpy(-1, data_i)
-            diff_i_func = dl.Function(Vh_state, diff_i)
-            diff_i_func_pts = dl.project(diff_i_func*fwd.obs_point_src, Vh_state)
-            diff_i = diff_i_func_pts.vector()
             if np.any(np.isclose(fwd.sim_times[i], fwd.obs_times)):
+                u_i = fwd.fwd_sol[i][0]
+                data_i = data_exact[i][0]
+                diff_i = u_i.copy()
+                diff_i.axpy(-1, data_i)
+                vals = []
+                diff_i_func = dl.Function(fwd.Vh_state, diff_i)
+                for loc in fwd.obs_locations:
+                    vals.append(diff_i_func(dl.Point(loc,0)))
+                diff_i_func_pts = dl.interpolate(Dirac(loc=fwd.obs_locations,                   
+                 f=fwd.f_dirac, vals=vals, L=fwd.L, smooth_f=fwd.smooth_f, degree=1), fwd.Vh_state)
+
+                #diff_i_func = dl.Function(Vh_state, diff_i)
+                #diff_i_func_pts = dl.project(diff_i_func*fwd.obs_point_src, Vh_state)
+                diff_i = diff_i_func_pts.vector()
+
                 #print('t: ', fwd.sim_times[i])
                 cost += dt*0.5*diff_i.inner(fwd.M*diff_i)
         return cost
     verify_grad_const = True
+    #%%
     if verify_grad_const:
         # gradient check using scipy.optimize.approx_fprime
         from scipy.optimize import approx_fprime
-        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-10)
-        grad_scipy_const_func = dl.Function(Vh_parameter)
+        grad_scipy = approx_fprime(k_const.get_local(), cost, 1e-12)
+        grad_scipy_const_func = dl.Function(fwd.Vh_parameter)
         grad_scipy_const_func.vector()[:] = grad_scipy[:]
 
         # Plot the gradients
         plt.figure()
-        dl.plot(dl.Function(Vh_parameter, grad), label='adj')
+        dl.plot(dl.Function(fwd.Vh_parameter, grad), label='adj')
         dl.plot(grad_scipy_const_func, label='scipy')
         plt.title('gradient at constant parameter')
         plt.legend()
+    #%%
 
     verify_grad_true = False
     if verify_grad_true: 
@@ -408,15 +543,15 @@ if __name__ == "__main__":
         fwd.solveAdj(k_vec, rhs)
         grad_true = fwd.evalGradientParameter(k_vec)
         plt.figure()
-        dl.plot(dl.Function(Vh_parameter, grad_true))
+        dl.plot(dl.Function(fwd.Vh_parameter, grad_true))
         plt.title('gradient at true')
         #
-        grad_scipy_true = approx_fprime(k_vec.get_local(), cost, 1e-8)
+        grad_scipy_true = approx_fprime(k_vec.get_local(), cost, 1e-6)
         plt.figure()
         plt.plot(grad_scipy_true[::-1]) 
         plt.title('scipy gradient at true')
-
-    verify_grad_random = False
+    #%%
+    verify_grad_random = True
     if verify_grad_random: 
         random_k = dl.Vector()
         fwd.M.init_vector(random_k, 0)
@@ -431,22 +566,27 @@ if __name__ == "__main__":
         end = time.time()
         print('adj gradient time: ', end-start)
 
-        plt.figure()
-        dl.plot(dl.Function(Vh_parameter, grad_random))
-        plt.title('gradient at random')
-        
+
+
         # time scipy gradient
         start = time.time()
-        grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-14)
+        grad_scipy_random = approx_fprime(random_k.get_local(), cost, 1e-9)
+        grad_scipy_random_func = dl.Function(fwd.Vh_parameter)
+        grad_scipy_random_func.vector()[:] = grad_scipy_random[:]
         end = time.time()
         print('scipy gradient time: ', end-start)
+
         plt.figure()
-        plt.plot(grad_scipy_random[::-1])
-        plt.title('scipy gradient at random')
+        dl.plot(dl.Function(fwd.Vh_parameter, grad_random), label='adj')
+        dl.plot(grad_scipy_random_func, label='scipy')
+        plt.legend()
+        plt.title('gradient at random')
+
+    #%%
 
 
 #    #%% Test CUQIpyFwd
-#    cuqipy_fwd = CUQIpyFwd(mesh, Vh_parameter, Vh_state, t_init, t_final, t_1, dt, u0, f, locations, fwd.obs_times)
+#    cuqipy_fwd = CUQIpyFwd(fwd.mesh, fwd.Vh_parameter, fwd.Vh_state, t_init, t_final, dt, u0, f, locations, fwd.obs_times)
 #    #obs = cuqipy_fwd.forward(k)
 #    #grad = cuqipy_fwd.gradient(k_vec)
 #    
@@ -516,5 +656,24 @@ if __name__ == "__main__":
 #    plt.figure()
 #    dl.plot(G_KL.par2fun(g_FD))
 #    plt.title('FD gradient')
-# %%
+## %%
+##
 #
+#
+#fenics_dirac = Dirac(loc=[10], vals=[1], f=10, degree=1, L=fwd.L, smooth_f=1)
+#fenics_dirac_func = dl.interpolate(fenics_dirac, fwd.Vh_state)
+#dl.plot(fenics_dirac_func)
+#
+#
+#
+##%%
+#
+##plot dirac
+#
+#x = np.linspace(0, 100, 1000)
+#plt.figure()
+#plt.plot(x, dirac_approx(x, loc=[20,40], vals=[1,2], f=1))
+#plt.show()
+
+
+# %%
