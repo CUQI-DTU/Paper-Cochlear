@@ -279,43 +279,43 @@ class TimeDependantSolution:
         return max
 
 
-#class CUQIpyFwd:
-#    def __init__(self, *args, **kwargs):
-#        self.fwd = TimeDependantHeat(*args, **kwargs)
-#
-#    def forward(self, k):
-#        self.fwd.solveFwd(k.vector())
-#        #extract obs in an array
-#        obs = np.zeros((len(self.fwd.obs_locations), len(self.fwd.obs_times)) )
-#        for i, obs_t in enumerate(self.fwd.obs_times):
-#            #print ('obs_t: ', obs_t)
-#            #print ('i', i )
-#            sol_t = self.fwd.fwd_sol.solution_at_time(obs_t)
-#            sol_t_func = dl.Function(self.fwd.Vh_state, sol_t)
-#            for j, loc in enumerate(self.fwd.obs_locations):
-#                obs[j, i] = sol_t_func(dl.Point(loc,0))
-#        return obs
-#    
-#    def compute_rhs(self, dirc):
-#        ts = self.fwd.obs_times
-#        locs = self.fwd.obs_locations
-#        dirc = dirc.reshape((len(locs), len(ts)))
-#        rhs = TimeDependantSolution()
-#        for i, t in enumerate(ts):
-#            rhs_fun_i = dl.Function(Vh_state)
-#            for j, loc in enumerate(locs):
-#                p = dl.PointSource(Vh_state,dl.Point(loc,0),dirc[j,i])
-#                p.apply(rhs_fun_i.vector())
-#            rhs.add(rhs_fun_i.vector(), t)
-#        return rhs
-#    
-#    def gradient(self, dirc, k):
-#
-#        self.fwd.solveFwd(k.vector())
-#        rhs = self.compute_rhs(dirc)
-#        self.fwd.solveAdj(k.vector(), rhs)
-#        grad = self.fwd.evalGradientParameter(k.vector())
-#        return dl.Function(Vh_parameter, grad)
+class CUQIpyFwd:
+    def __init__(self, *args, **kwargs):
+        self.fwd = TimeDependantHeat(*args, **kwargs)
+
+    def forward(self, k):
+        self.fwd.solveFwd(k.vector())
+        #extract obs in an array
+        obs = np.zeros((len(self.fwd.obs_locations), len(self.fwd.obs_times)) )
+        for i, obs_t in enumerate(self.fwd.obs_times):
+            #print ('obs_t: ', obs_t)
+            #print ('i', i )
+            sol_t = self.fwd.fwd_sol.solution_at_time(obs_t)
+            sol_t_func = dl.Function(self.fwd.Vh_state, sol_t)
+            for j, loc in enumerate(self.fwd.obs_locations):
+                obs[j, i] = sol_t_func(dl.Point(loc,0))
+        return obs
+    
+    def compute_rhs(self, dirc):
+        ts = self.fwd.obs_times
+        locs = self.fwd.obs_locations
+        dirc = dirc.reshape((len(locs), len(ts)))
+        rhs = TimeDependantSolution()
+        for i, t in enumerate(ts):
+            vals = dirc[:,i]
+            rhs_fun_i = dl.interpolate(Dirac(loc=fwd.obs_locations,                   
+                f=fwd.f_dirac, vals=vals, L=fwd.L, degree=1,
+                smooth_f=fwd.smooth_f), fwd.Vh_state)
+            rhs.add(rhs_fun_i.vector(), t)
+        return rhs
+        
+    def gradient(self, dirc, k):
+        Vh_parameter = self.fwd.Vh_parameter
+        self.fwd.solveFwd(k.vector())
+        rhs = self.compute_rhs(dirc)
+        self.fwd.solveAdj(k.vector(), rhs)
+        grad = self.fwd.evalGradientParameter(k.vector())
+        return dl.Function(Vh_parameter, grad)
 
 #https://stackoverflow.com/questions/20618804/how-to-smooth-a-curve-for-a-dataset
 def smooth(y, box_pts):
