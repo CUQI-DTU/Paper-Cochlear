@@ -66,7 +66,8 @@ class TimeDependantHeat:
         self.bc_domain = bc_domain
        
         # Dirichlet BC for the forward and the adjoint operators
-        self._state_bcs = dl.DirichletBC(self.Vh_state, bc_exp, self.bc_domain)
+        #self._state_bcs = dl.DirichletBC(self.Vh_state, bc_exp, self.bc_domain)
+        self._bc_exp = bc_exp
         p_exp  = dl.Constant(0.0)
         self._adjoint_bcs = dl.DirichletBC(self.Vh_state, p_exp, self.bc_domain)
 
@@ -111,6 +112,13 @@ class TimeDependantHeat:
             t += self.dt
             uold_func = dl.Function(self.Vh_state, uold)
             rhs_expr  = dl.inner(uold_func,v)*dl.dx
+
+            # set bc
+            self._bc_exp.t = t
+            self._state_bcs = dl.DirichletBC(
+                self.Vh_state,
+                self._bc_exp,
+                self.bc_domain)
             A,b =dl.assemble_system(self.M_expr+self.E_expr(x), \
                  rhs_expr+self.f_expr, self._state_bcs)
             dl.solve(A,u,b)
