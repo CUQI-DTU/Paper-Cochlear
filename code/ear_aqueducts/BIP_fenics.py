@@ -10,7 +10,8 @@ from cuqi.model import Model
 from cuqi.distribution import Gaussian, JointDistribution
 from cuqi.sampler import NUTS
 import matplotlib.pyplot as plt
-    
+from fenics_utils import TimeDependentBoundaryCondition
+
 import dolfin as dl
 import numpy as np
 
@@ -52,9 +53,11 @@ class LeftBoundary(dl.SubDomain):
         return on_boundary and abs(x[0]) < bc_tol
     
 bc_domain = LeftBoundary()  
-bc_exp = dl.Expression('4', degree=1)  
+bc_exp = TimeDependentBoundaryCondition(real_times, real_data[:len(real_times)], degree=1) 
 CUQIpy_fwd = CUQIpyFwd(L, n_grid, 0, tau_max,
-                        tau[-1]-tau[-2], u0, f, bc_exp, bc_domain, real_locations)
+                        tau[-1]-tau[-2], u0, f, bc_exp,
+                        bc_domain, real_locations)
+
 CUQIpy_fwd.fwd.obs_times = real_times
 
 #%% Create forward model
@@ -138,3 +141,83 @@ g_adj.plot(title='adjoint gradient')
 plt.figure()
 dl.plot(G_KL.par2fun(g_FD))
 plt.title('FD gradient')
+
+
+#%% TESTS
+
+# plot only fisrt concentration
+plot_time_series(real_times, [real_locations[0]],A.range_geometry.par2fun(real_data)[0,:].reshape(1,7))
+
+#
+tau_current = 600
+print(tau_current/60)
+print(np.interp(tau_current, real_times, A.range_geometry.par2fun(real_data)[0,:]))
+# %% Test 2
+#This code from https://fenicsproject.org/pub/tutorial/html/._ftut1006.html
+# I used it to verify my solution
+# the solutions match
+
+
+
+
+T = real_times[-1]           # final time
+num_steps = len(tau)-1     # number of time steps
+dt = tau[-1]-tau[-2] # time step size
+
+# Create mesh and define function space
+
+mesh = CUQIpy_fwd.fwd.mesh
+V = dl.FunctionSpace(mesh, 'CG', 1)
+
+# Define boundary condition
+u_D = CUQIpy_fwd.fwd._bc_exp
+u_D.t = 0
+
+def boundary(x, on_boundary):
+    return on_boundary and abs(x[0]) < bc_tol
+
+bc = dl.DirichletBC(V, u_D, boundary)
+
+# Define initial value
+u_n = dl.interpolate(dl.Constant(0), V)
+#u_n = project(u_D, V)
+
+# Define variational problem
+u = dl.TrialFunction(V)
+v = dl.TestFunction(V)
+f = dl.Constant(0)
+
+F = u*v*dl.dx + dt*100*dl.inner(dl.grad(u), dl.grad(v))*dl.dx - (u_n + dt*f)*v*dl.dx
+a, L_exp = dl.lhs(F), dl.rhs(F)
+
+# Time-stepping
+u =dl.Function(V)
+t = 0
+
+for n in range(num_steps):
+
+    # Update current time
+    t += dt
+    u_D.t = t
+
+    # Compute solution
+    dl.solve(a == L_exp, u, bc)
+
+    # Plot solution
+    #dl.plot(u)
+
+    # Compute error at vertices
+    #u_e = dl.interpolate(u_D, V)
+    #error = np.abs(u_e.vector().get_local() - u.vector().get_local()).max()
+    #print('t = %.2f: error = %.3g' % (t, error))
+
+    # Update previous solution
+    u_n.assign(u)
+    plt.ylim([0,5000])
+    dl.plot(u)
+# Hold plot
+plt.figure()
+# Compare to solution from my TimeDependantHeat class
+for i in range(num_steps):
+    dl.plot(dl.Function(Vh_parameter,CUQIpy_fwd.fwd.fwd_sol[1+i][0]))
+plt.ylim([0,5000])
