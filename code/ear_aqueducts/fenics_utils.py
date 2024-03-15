@@ -9,8 +9,11 @@ class TimeDependentBoundaryCondition(dl.UserExpression):
         self.bc_data = bc_data
         super().__init__(**kwargs)
     def eval(self, value, x):
-        value[0] = np.interp(self.t,
+        if x[0]<10:
+            value[0] =np.interp(self.t,
                              self.times,
                              self.bc_data)
+        else:
+            value[0] = 0
     def value_shape(self):
         return ()
