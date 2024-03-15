@@ -15,6 +15,8 @@ from fenics_utils import TimeDependentBoundaryCondition
 import dolfin as dl
 import numpy as np
 
+# Note other option is to use Neumann bc at the right boundary
+
 #%% SET UP ARGS
 class Args:
     def __init__(self):
@@ -31,7 +33,7 @@ real_times, real_locations, real_data, real_std_data = read_data_files(args)
 
 #%% CREATE CUQIpyFwd OBJECT
 # PDE mesh
-L = real_locations[-1]*1.01
+L = 500#real_locations[-1]*1.01
 n_grid =int(L/5)   # Number of solution nodes
 mesh = dl.IntervalMesh(n_grid, 0, L)
 
@@ -50,7 +52,7 @@ f = dl.Expression('0', degree=1)
 bc_tol = 1E-14
 class LeftBoundary(dl.SubDomain):
     def inside(self, x, on_boundary):  
-        return on_boundary and abs(x[0]) < bc_tol
+        return on_boundary #and abs(x[0]) < bc_tol
     
 bc_domain = LeftBoundary()  
 bc_exp = TimeDependentBoundaryCondition(real_times, real_data[:len(real_times)], degree=1) 
@@ -67,7 +69,7 @@ Vh_parameter = CUQIpy_fwd.fwd.Vh_parameter
 G_FEM = FEniCSContinuous(Vh_parameter)
     
 # The KL parameterization
-G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=2)
+G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=6)
 
 # Create range geometry
 G_cont = Continuous2D((real_locations, real_times))
@@ -92,9 +94,9 @@ plot_time_series(
          )
 )
 # %% Create prior distribution
-prior = Gaussian(mean=0.0, cov=50**2, geometry=G_KL)
+prior = Gaussian(mean=0.0, cov=20**2, geometry=G_KL)
 #
-np.random.seed(0)
+#np.random.seed(1)
 x_true = prior.sample()
 x_true.plot(title='True parameter')
 data = A(x_true)
@@ -175,7 +177,7 @@ u_D = CUQIpy_fwd.fwd._bc_exp
 u_D.t = 0
 
 def boundary(x, on_boundary):
-    return on_boundary and abs(x[0]) < bc_tol
+    return on_boundary #and abs(x[0]) < bc_tol
 
 bc = dl.DirichletBC(V, u_D, boundary)
 
@@ -217,8 +219,12 @@ for n in range(num_steps):
     plt.ylim([0,5000])
     dl.plot(u)
 # Hold plot
+plt.title('other FEniCS implementation solution')
 plt.figure()
 # Compare to solution from my TimeDependantHeat class
 for i in range(num_steps):
     dl.plot(dl.Function(Vh_parameter,CUQIpy_fwd.fwd.fwd_sol[1+i][0]))
 plt.ylim([0,5000])
+plt.title('My solution')
+
+# %%
