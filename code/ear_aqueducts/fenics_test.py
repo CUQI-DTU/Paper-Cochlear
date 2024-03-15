@@ -90,7 +90,7 @@ class TimeDependantHeat:
         v = dl.TestFunction(self.Vh_state)
         u = dl.TrialFunction(self.Vh_state)
 
-        self._E_expr = self.dt*dl.exp(k_func)*dl.inner(dl.nabla_grad(u),\
+        self._E_expr = self.dt*(dl.exp(k_func)+dl.Constant(10))*dl.inner(dl.nabla_grad(u),\
                 dl.nabla_grad(v))*dl.dx
 
         return self._E_expr
