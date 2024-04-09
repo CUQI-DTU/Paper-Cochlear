@@ -38,13 +38,13 @@ n_grid =int(L/5)   # Number of solution nodes
 mesh = dl.IntervalMesh(n_grid, 0, L)
 
 # PDE time step
-tau_max = 30*60 # Final time in sec
+tau_max = 40*60 # Final time in sec
 cfl = 5 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
 dt_approx = cfl*np.floor(L/n_grid)**2 # Defining approximate time step size
 n_tau = int(tau_max/dt_approx)+1 # Number of time steps
 tau = np.linspace(0, tau_max, n_tau)
-tau = np.linspace(0, tau_max, int(1800/100)+1)
+tau = np.linspace(0, tau_max, int(tau_max/100)+1)
 
 # PDE initial and boundary conditions
 u0 = dl.Expression('0', degree=1)
@@ -69,7 +69,7 @@ Vh_parameter = CUQIpy_fwd.fwd.Vh_parameter
 G_FEM = FEniCSContinuous(Vh_parameter)
     
 # The KL parameterization
-G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=6)
+G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=4)
 
 # Create range geometry
 G_cont = Continuous2D((real_locations, real_times))
@@ -77,7 +77,9 @@ G_cont = Continuous2D((real_locations, real_times))
 # Forward model
 #A = Model(forward=CUQIpy_fwd.forward, gradient=CUQIpy_fwd.gradient, range_geometry=G_cont, domain_geometry=G_KL)
 
-A = Model(forward=CUQIpy_fwd.forward, range_geometry=G_cont, domain_geometry=G_KL)
+A = Model(forward=CUQIpy_fwd.forward,
+          gradient=CUQIpy_fwd.gradient,
+          range_geometry=G_cont, domain_geometry=G_KL)
 
 
 # %% Test applying the forward model
@@ -94,17 +96,20 @@ plot_time_series(
          )
 )
 # %% Create prior distribution
-prior = Gaussian(mean=0.0, cov=20**2, geometry=G_KL)
+prior = Gaussian(mean=0.0, cov=4**2, geometry=G_KL)
 #
 #np.random.seed(1)
 x_true = prior.sample()
 x_true.plot(title='True parameter')
+plt.figure()
+dl.plot(dl.exp(x_true.funvals)+10)
+plt.title('True parameter, mapped')
 data = A(x_true)
 plt.figure()
 plot_time_series(CUQIpy_fwd.fwd.obs_times, CUQIpy_fwd.fwd.obs_locations, data.funvals)
 
 #%% Likelihood
-s_noise = 0.003
+s_noise = 330
 y = Gaussian(A(prior), s_noise**2, geometry=G_cont)
 
 # %% Create noisy data
@@ -121,30 +126,41 @@ else:
 # posterior
 joint = JointDistribution(prior, y)
 posterior = joint(y=noisy_data)
+
+# verify the posterior gradient
+#np.random.seed(7)
+x1 = prior.sample()
+posterior.disable_FD()
+posterior.gradient(x1).plot(plot_par=True)
+posterior.enable_FD(epsilon=1e-8)
+posterior.gradient(x1).plot(marker='o',plot_par=True)
+posterior.disable_FD()
 # %%
 # sample from the posterior using NUTS
 
-sampler = NUTS(posterior, max_depth=4)
+sampler = NUTS(posterior, max_depth=6)
 #samples = sampler.sample(10, 5 )
 # %%
 #check posterior grad
-np.random.seed(2)
+np.random.seed(10)
 prior_sample_i = prior.sample()
+posterior.disable_FD()
 g_adj = posterior.gradient(prior_sample_i)
 
 #%%
 from scipy.optimize import approx_fprime
 def cost(x):
     return posterior.logpdf(x)
-g_FD = approx_fprime(prior_sample_i, cost, 1e-8)
+g_FD = approx_fprime(prior_sample_i, cost, 1e-1)
 
 plt.figure()
-g_adj.plot(title='adjoint gradient')
-plt.figure()
-dl.plot(G_KL.par2fun(g_FD))
-plt.title('FD gradient')
+g_adj.plot(label='adjoint gradient')
+dl.plot(G_KL.par2fun(g_FD), label='FD gradient')
+plt.legend()
 
 
+#%% Sample
+#samples = sampler.sample(100, 10 )
 # CAN IGNOTE TESTS BELOW
 #%% TESTS
 
