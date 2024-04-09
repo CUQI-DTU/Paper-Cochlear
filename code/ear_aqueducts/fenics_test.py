@@ -311,10 +311,11 @@ class CUQIpyFwd:
         rhs = TimeDependantSolution()
         for i, t in enumerate(ts):
             vals = dirc[:,i]
-            rhs_fun_i = dl.interpolate(Dirac(loc=fwd.obs_locations,                   
-                f=fwd.f_dirac, vals=vals, L=fwd.L, degree=1,
-                smooth_f=fwd.smooth_f), fwd.Vh_state)
-            rhs.add(rhs_fun_i.vector(), t)
+            rhs_fun_i = dl.interpolate(Dirac(loc=self.fwd.obs_locations,                   
+                f=self.fwd.f_dirac, vals=vals, L=self.fwd.L, degree=1,
+                smooth_f=self.fwd.smooth_f), self.fwd.Vh_state)
+            dt = self.fwd.dt
+            rhs.add((-1/dt)*rhs_fun_i.vector(), t)
         return rhs
         
     def gradient(self, dirc, k):
