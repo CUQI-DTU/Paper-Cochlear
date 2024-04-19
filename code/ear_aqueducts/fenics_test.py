@@ -90,7 +90,7 @@ class TimeDependantHeat:
         v = dl.TestFunction(self.Vh_state)
         u = dl.TrialFunction(self.Vh_state)
 
-        self._E_expr = self.dt*(dl.exp(k_func)+dl.Constant(10))*dl.inner(dl.nabla_grad(u),\
+        self._E_expr = self.dt*(20*dl.exp(k_func)+dl.Constant(0))*dl.inner(dl.nabla_grad(u),\
                 dl.nabla_grad(v))*dl.dx
 
         return self._E_expr
@@ -315,7 +315,7 @@ class CUQIpyFwd:
                 f=self.fwd.f_dirac, vals=vals, L=self.fwd.L, degree=1,
                 smooth_f=self.fwd.smooth_f), self.fwd.Vh_state)
             dt = self.fwd.dt
-            rhs.add((-1/dt)*rhs_fun_i.vector(), t)
+            rhs.add(-1/2*rhs_fun_i.vector(), t)
         return rhs
         
     def gradient(self, dirc, k):
@@ -592,6 +592,12 @@ if __name__ == "__main__":
         plt.title('gradient at random')
 
     #%%
+    def myfwd(k):
+        # convert k from numpy array to dolfin vector
+        k_v = dl.Function(fwd.Vh_parameter).vector()
+        k_v[:] = k[:]
+        fwd.solveFwd(k_v)
+
 
 
 #    #%% Test CUQIpyFwd

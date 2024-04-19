@@ -39,7 +39,7 @@ mesh = dl.IntervalMesh(n_grid, 0, L)
 
 # PDE time step
 tau_max = 40*60 # Final time in sec
-cfl = 5 # The cfl condition to have a stable solution
+cfl = 4 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
 dt_approx = cfl*np.floor(L/n_grid)**2 # Defining approximate time step size
 n_tau = int(tau_max/dt_approx)+1 # Number of time steps
@@ -69,7 +69,7 @@ Vh_parameter = CUQIpy_fwd.fwd.Vh_parameter
 G_FEM = FEniCSContinuous(Vh_parameter)
     
 # The KL parameterization
-G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=4)
+G_KL = MaternKLExpansion(G_FEM, length_scale=50, num_terms=10)
 
 # Create range geometry
 G_cont = Continuous2D((real_locations, real_times))
@@ -96,21 +96,22 @@ plot_time_series(
          )
 )
 # %% Create prior distribution
-prior = Gaussian(mean=0.0, cov=4**2, geometry=G_KL)
+prior = Gaussian(mean=0.0, cov=0.1**2, geometry=G_KL)
 #
-#np.random.seed(1)
-x_true = prior.sample()
-x_true.plot(title='True parameter')
+np.random.seed(4)
+x_true =  prior.sample() #Diff_100
+#x_true.plot(title='True parameter')
 plt.figure()
-dl.plot(dl.exp(x_true.funvals)+10)
+dl.plot(20*dl.exp(x_true.funvals))
 plt.title('True parameter, mapped')
-data = A(x_true)
+data = A(x_true, is_par=True)
 plt.figure()
-plot_time_series(CUQIpy_fwd.fwd.obs_times, CUQIpy_fwd.fwd.obs_locations, data.funvals)
+plot_time_series(CUQIpy_fwd.fwd.obs_times, CUQIpy_fwd.fwd.obs_locations, data.reshape((len(CUQIpy_fwd.fwd.obs_locations), len(CUQIpy_fwd.fwd.obs_times))))
 
 #%% Likelihood
-s_noise = 330
+s_noise = 50#330
 y = Gaussian(A(prior), s_noise**2, geometry=G_cont)
+y_draw = Gaussian(data, s_noise**2, geometry=G_cont) 
 
 # %% Create noisy data
 if args.case_synthetic:
@@ -137,9 +138,9 @@ posterior.gradient(x1).plot(marker='o',plot_par=True)
 posterior.disable_FD()
 # %%
 # sample from the posterior using NUTS
-
+posterior.enable_FD()
 sampler = NUTS(posterior, max_depth=6)
-#samples = sampler.sample(10, 5 )
+samples = sampler.sample(10, 300)
 # %%
 #check posterior grad
 np.random.seed(10)
