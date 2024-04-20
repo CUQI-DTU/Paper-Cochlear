@@ -17,24 +17,50 @@ except:
 # Print dill version
 print('dill version: ', pickle.__version__)
 
+#Arg class
+class Args:
+    def __init__(self):
+        self.animal = 'm1'
+        self.ear = 'l'
+        self.version = 'v_temp'
+        self.sampler = 'MH'
+        self.unknown_par_type = 'constant'
+        self.unknown_par_value = [100]
+        self.data_type = 'synthetic_from_diffusion'
+        self.inference_type = 'constant'
+        self.Ns = 20
+        self.Nb = 20
+        self.noise_level = 0.1
+        self.add_data_pts = []
+        self.num_CA = 5
+        self.num_ST = 0
+
+def all_animals():
+    """Function to return all animals. """
+    return ['m1', 'm2', 'm3', 'm4', 'm6']
+
+def all_ears():
+    """Function to return all ears. """
+    return ['l', 'r']
+
 def parse_commandline_args(myargs):
     """Function to parse command line arguments."""
+    arg_obj = Args()
     parser = argparse.ArgumentParser(
         description='run the ear aqueduct Bayesian model')
     parser.add_argument('-animal', metavar='animal', type=str,
-                        choices=['m1', 'm2', 'm3', 'm4', 'm6'],
-                        default='m1',
+                        choices=all_animals(),
+                        default=arg_obj.animal,
                         help='the animal to model')
-    parser.add_argument('-ear', metavar='ear', type=str, choices=[
-                        'l', 'r'],
-                        default='l',
+    parser.add_argument('-ear', metavar='ear', type=str, choices=all_ears(),
+                        default=arg_obj.ear,
                         help='the ear to model')
     parser.add_argument('-version', metavar='version', type=str,
-                        default='v_temp',
+                        default=arg_obj.version,
                         help='the version of the model to run')
     parser.add_argument('-sampler', metavar='sampler', type=str, choices=[
                         'CWMH', 'MH', 'NUTS'],
-                        default='MH',
+                        default=arg_obj.sampler,
                         help='the sampler to use')
     parser.add_argument('-unknown_par_type',
                         metavar='unknown_par_type',
@@ -42,46 +68,46 @@ def parse_commandline_args(myargs):
                                            'smooth',
                                            'step',
                                            ],
-                        default='constant',
+                        default=arg_obj.unknown_par_type,
                         help='Type of unknown parameter, diffusion coefficient')
     parser.add_argument('-unknown_par_value', metavar='unknown_par_value',
                          nargs='*',
                          type=float,
-                        default=[100],
+                        default=arg_obj.unknown_par_value,
                         help='Value of unknown parameter, diffusion coefficient')
     parser.add_argument('-data_type', metavar='data_type', type=str,
                         choices=[
                             'real', 'synthetic_from_diffusion', 'synthetic_from_advection_diffusion'],
-                        default='synthetic_from_diffusion',
+                        default=arg_obj.data_type,
                         help='Type of data, real or synthetic')
     parser.add_argument('-inference_type', metavar='inference_type', type=str,
                         choices=[
                             'constant', 'heterogeneous', 'advection_diffusion'],
-                        default='constant',
+                        default=arg_obj.inference_type,
                         help='Type of inference, constant or heterogeneous coefficients')
     parser.add_argument('-Ns', metavar='Ns', type=int,
-                        default=20,
+                        default=arg_obj.Ns,
                         help='Number of samples')
     parser.add_argument('-Nb', metavar='Nb', type=int,
-                        default=20,
+                        default=arg_obj.Nb,
                         help='Number of burn-in samples')
     parser.add_argument('-noise_level', metavar='noise_level', 
                         type=str,
-                        default=0.1,
-                        help='Noise level for data, set to "from_data" to read noise level from data')
+                        default=arg_obj.noise_level,
+                        help='Noise level for data, set to "from_data_var" to read noise level from data that varies for each data point and set to "from_data_avg" to compute average noise level from data and use it for all data points')
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
-                        default=[])
+                        default=arg_obj.add_data_pts)
     # number of CA points used when -data_pts_type is CA
     parser.add_argument('-num_CA', metavar='num_CA', type=int,
                         choices=range(6),
-                        default=5,
+                        default=arg_obj.num_CA,
                         help='number of CA points')
     # number of ST points used when -data_pts_type is CA_ST
     parser.add_argument('-num_ST', metavar='num_ST', type=int,
                         choices=range(9),
-                        default=0,
+                        default=arg_obj.num_ST,
                         help='number of ST points used when -data_pts_type is CA_ST') 
     
     args = parser.parse_args(myargs)
@@ -237,11 +263,13 @@ def set_the_noise_std(
         real_data, real_std_data, G_cont2D):
     """Function to set the noise standard deviation. """
     # Use noise levels read from the file
-    if noise_level == "from_data":
+    if noise_level == "from_data_var":
         ## Noise standard deviation
         s_noise = real_std_data
     # Use noise level specified in the command line
     else:
+        if noise_level == "from_data_avg":
+            noise_level = np.mean(real_std_data)
         try:
             noise_level = float(noise_level)
         except:
