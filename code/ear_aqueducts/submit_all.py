@@ -19,7 +19,7 @@ Ns = 20
 Nb = 10
 
 # Main command to run the job
-main_command = "python3 demo_aqueduct.py"
+main_command = "python advection_diffusion_inference.py"
 
 # Loop over all animals, ears, noise levels and num_ST
 for animal in animals:
