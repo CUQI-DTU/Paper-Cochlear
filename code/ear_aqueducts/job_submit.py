@@ -1,10 +1,5 @@
 import os
-
-#from skimage.metrics import structural_similarity as ssim
- 
-
-#folder_reconstruction = "Output"
-#folder_output_examples = "gbar/results"
+from advection_diffusion_inference_utils import Args, create_experiment_tag
  
 def submit(jobid,cmd):
     id = str(jobid)
@@ -36,26 +31,34 @@ def submit(jobid,cmd):
     f.write(strcmd)
     f.close()
     os.system('bsub < ' + jobscript)
+
+def create_command(main_command, args):
+    if isinstance(args.unknown_par_value, list):
+        unknown_par_value_str = str(args.unknown_par_value[0])+' '+str(args.unknown_par_value[1])
+    else:
+        unknown_par_value_str = str(args.unknown_par_value)
+    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns_const "+str(args.Ns_const)+" -Ns_var "+str(args.Ns_var)+" -noise_level "+str(args.noise_level)+" -data_pts_type "+args.data_pts_type
+    return cmd
  
 if __name__ == "__main__":
-    animal = 'm1'
-    ear = 'l'
-    version = 'v_dec1_a_temp9'
-    sampler = 'NUTS'
-    unknown_par_type = 'smooth'
-    unknown_par_value = [400, 1200]
-    unknown_par_value_str1 = str(unknown_par_value[0])+' '+str(unknown_par_value[1]) 
-    unknown_par_value_str2 = str(unknown_par_value[0])+'_'+str(unknown_par_value[1])
-    data_type = 'real'
-    inference_type = 'both'
-    Ns_const = 20
-    Ns_var = 20
-    noise_level = 0.1
-    data_pts_type = 'CA'
-    cmd = "python3 demo_aqueduct.py -animal "+animal+" -ear "+ear+" -version "+version+" -sampler "+sampler+" -unknown_par_type "+unknown_par_type+" -unknown_par_value "+unknown_par_value_str1+" -data_type "+data_type+" -inference_type "+inference_type+" -Ns_const "+str(Ns_const)+" -Ns_var "+str(Ns_var)+" -noise_level "+str(noise_level)+" -data_pts_type "+data_pts_type
+    args = Args()
+    args.animal = 'm1'
+    args.ear = 'l'
+    args.version = 'v_dec1_a_temp9'
+    args.sampler = 'NUTS'
+    args.unknown_par_type = 'smooth'
+    args.unknown_par_value = [400, 1200]
+    args.data_type = 'real'
+    args.inference_type = 'both'
+    args.Ns = 20
+    args.Nb = 10
+    args.noise_level = 0.1
+    args.num_ST = 0
+    main_command = "python3 demo_aqueduct.py"
 
+    cmd = create_command(main_command, args)
     print(cmd)
 
-    tag = animal+'_'+ear+'_'+sampler+'_'+unknown_par_type+'_'+unknown_par_value_str2+'_'+data_type+'_'+inference_type+'_'+str(Ns_const)+'_'+str(Ns_var)+'_'+str(noise_level)+'_'+version+'_'+data_pts_type
+    tag = create_experiment_tag(args)
 
     submit(tag,cmd)
