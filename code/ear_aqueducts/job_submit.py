@@ -34,10 +34,21 @@ def submit(jobid,cmd):
 
 def create_command(main_command, args):
     if isinstance(args.unknown_par_value, list):
-        unknown_par_value_str = str(args.unknown_par_value[0])+' '+str(args.unknown_par_value[1])
+        if len(args.unknown_par_value)>=2:
+            unknown_par_value_str = str(args.unknown_par_value[0])+' '+str(args.unknown_par_value[1])
+        elif len(args.unknown_par_value)==1:
+            unknown_par_value_str = str(args.unknown_par_value[0])
+        else:
+            raise Exception
     else:
         unknown_par_value_str = str(args.unknown_par_value)
-    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns_const "+str(args.Ns_const)+" -Ns_var "+str(args.Ns_var)+" -noise_level "+str(args.noise_level)+" -data_pts_type "+args.data_pts_type
+
+    if isinstance(args.add_data_pts, list) and len(args.add_data_pts)==0:
+        add_data_pts_str = ' '
+    else:
+        raise Exception("Unknown args.add_data_pts type")
+
+    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns "+str(args.Ns)+" -Nb "+str(args.Nb)+" -noise_level "+str(args.noise_level)+" -add_data_pts "+ add_data_pts_str
     return cmd
  
 if __name__ == "__main__":
