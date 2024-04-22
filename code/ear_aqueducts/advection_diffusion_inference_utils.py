@@ -34,6 +34,7 @@ class Args:
         self.add_data_pts = []
         self.num_CA = 5
         self.num_ST = 0
+        self.NUTS_kwargs = {'max_depth': 10}
 
 def all_animals():
     """Function to return all animals. """
@@ -288,8 +289,11 @@ def set_the_noise_std(
     
     return s_noise
 
-def sample_the_posterior(sampler, posterior, Ns, Nb, G_c):
+def sample_the_posterior(sampler, posterior, G_c, args):
     """Function to sample the posterior. """
+    Ns = args.Ns
+    Nb = args.Nb
+
     x0 = np.zeros(G_c.par_dim) + 20
     x0 = x0[0] if len(x0) == 1 else x0 # convert to float
 
@@ -299,7 +303,8 @@ def sample_the_posterior(sampler, posterior, Ns, Nb, G_c):
         posterior_samples_burnthin = posterior_samples.burnthin(Nb)
     elif sampler == 'NUTS':
         posterior.enable_FD()
-        my_sampler = NUTS(posterior, x0=x0, max_depth=6)
+        NUTS_kwargs = args.NUTS_kwargs
+        my_sampler = NUTS(posterior, x0=x0, **NUTS_kwargs)
         posterior_samples = my_sampler.sample_adapt(Ns, Nb) 
         posterior_samples_burnthin = posterior_samples
     else:

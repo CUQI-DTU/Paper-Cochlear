@@ -22,7 +22,8 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     sample_the_posterior,\
     create_experiment_tag,\
     plot_experiment,\
-    save_experiment_data
+    save_experiment_data,\
+    Args
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -36,6 +37,11 @@ np.random.seed(1)
 #%% STEP 1: Parse command line arguments
 #---------------------------------------
 args = parse_commandline_args(sys.argv[1:])
+
+# Add arguments that are not passed from the command line
+args_predefined = Args()
+args.NUTS_kwargs = args_predefined.NUTS_kwargs
+
 # create a tag from the parameters of the experiment
 tag = create_experiment_tag(args)
 print('Tag:')
@@ -165,7 +171,7 @@ posterior = joint(y=data) # condition on y=y_obs
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
 samples = sample_the_posterior(
-    args.sampler, posterior, args.Ns, args.Nb, G_c)
+    args.sampler, posterior, G_c, args)
 
 #%% STEP 18: Plot the results
 #----------------------------
