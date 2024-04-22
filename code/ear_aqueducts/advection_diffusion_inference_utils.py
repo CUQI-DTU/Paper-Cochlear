@@ -530,7 +530,9 @@ def create_experiment_tag(experiment_par):
         str(experiment_par.Ns)+'_'+\
         str(experiment_par.noise_level)+'_'+\
         version+'_'+\
-        data_pt_str
+        data_pt_str+'_'+\
+        str(experiment_par.num_ST)+'_'+\
+        str(experiment_par.num_CA)
     
     return tag
 
