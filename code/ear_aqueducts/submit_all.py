@@ -8,15 +8,15 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag
 
 # Array of all animals
-animals = all_animals()
+animals = all_animals()[:2]
 # Array of all ears
 ears = all_ears()
-noise_levels = ["from_data_var", "from_data_avg", 0.1, 0.2]
+noise_levels = ["from_data_var", "from_data_avg", 0.1, 0.2][:2]
 num_ST_list = [0, 4]
-version = 'v_April22_2024_a'
+version = 'v_April22_2024_b'
 sampler = 'NUTS'
-Ns = 1000
-Nb = 20
+Ns = 20
+Nb = 10
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
