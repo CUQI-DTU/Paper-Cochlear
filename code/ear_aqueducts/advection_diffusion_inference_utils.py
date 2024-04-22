@@ -153,16 +153,16 @@ def read_data_files(args):
         # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
         real_locations = dist_file['distance'].values
         ST_list = ['ST'+str(i+1) for i in range(args.num_ST)]
-        CA_CT_list = CA_list.extend(ST_list)
+        CA_ST_list = CA_list + ST_list
     
         ## Read concentration file and times
         constr_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        real_data = constr_file[CA_CT_list].values.T.ravel()
-
+        real_data = constr_file[CA_ST_list].values.T.ravel()
         ## Read std data
-        CA_CT_std_list = [item+' std' for item in CA_CT_list]
-        real_std_data = constr_file[CA_CT_std_list].values.T.ravel()
+        std_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        CA_ST_std_list = [item+' std' for item in CA_ST_list]
+        real_std_data = std_file[CA_ST_std_list].values.T.ravel()
 
     return real_times, real_locations, real_data, real_std_data
 
