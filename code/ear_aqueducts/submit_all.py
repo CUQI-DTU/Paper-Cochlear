@@ -36,6 +36,7 @@ for animal in animals:
                 args.Nb = Nb
                 args.noise_level = noise_level
                 args.num_ST = num_ST
+                args.inference_type = 'heterogeneous'
 
                 cmd = create_command(main_command, args)
                 print(cmd)
