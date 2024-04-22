@@ -127,6 +127,7 @@ def read_data_files(args):
     args : argparse.Namespace
         Arguments from command line.
     """
+    CA_list = ['CA'+str(i+1) for i in range(args.num_CA)]
 
     if args.num_ST == 0: # Only CA data
         print('CA data.')
@@ -137,7 +138,6 @@ def read_data_files(args):
         ## Read concentration file and times
         constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        CA_list = ['CA'+str(i+1) for i in range(args.num_CA)]
         real_data = constr_file[CA_list].values.T.ravel()
 
         ## Read std data
