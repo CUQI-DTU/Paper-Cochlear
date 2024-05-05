@@ -166,6 +166,25 @@ def read_data_files(args):
 
     return real_times, real_locations, real_data, real_std_data
 
+def build_grids(L, coarsening_factor, n_grid_c):
+    # PDE grid
+    n_grid =int(L/coarsening_factor)   # Number of solution nodes
+    h = L/(n_grid+1)   # Space step size
+    grid = np.linspace(h, L-h, n_grid)
+    # Coefficients grid
+    h_c = L/(n_grid_c+1) 
+    grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
+    grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
+    assert np.isclose(grid_c[-1], L)
+    return grid, grid_c, grid_c_fine, h, n_grid
+
+def create_time_steps(h, cfl, tau_max):
+    """Function to create time steps array. """
+    dt_approx = cfl*h**2 # Defining approximate time step size
+    n_tau = int(tau_max/dt_approx)+1 # Number of time steps
+    tau = np.linspace(0, tau_max, n_tau)
+    return tau
+
 def create_domain_geometry(grid, coefficient_type):
     """Function to create domain geometry. """
     _map = lambda x: x**2
@@ -227,7 +246,10 @@ def create_prior_distribution(G_c, coefficient_type):
         prior = Gaussian(np.sqrt(400), 100, geometry=G_c)
     elif coefficient_type == 'heterogeneous':
         prior = GMRF(
-            np.ones(G_c.par_dim), 2, geometry=G_c, bc_type='neumann')
+            np.ones(G_c.par_dim)*np.sqrt(300),
+            0.2,
+            geometry=G_c,
+            bc_type='neumann')
     return prior
 
 def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
@@ -268,9 +290,15 @@ def set_the_noise_std(
         ## Noise standard deviation
         s_noise = real_std_data
     # Use noise level specified in the command line
+    elif noise_level == "from_data_avg":
+        s_noise = np.mean(real_std_data)
+
+    elif noise_level == "avg_over_time":
+        s_noise = real_std_data.reshape(G_cont2D.fun_shape)
+        s_noise = np.mean(s_noise, axis=1)
+        s_noise = np.repeat(s_noise, G_cont2D.fun_shape[1])
+
     else:
-        if noise_level == "from_data_avg":
-            noise_level = np.mean(real_std_data)
         try:
             noise_level = float(noise_level)
         except:
