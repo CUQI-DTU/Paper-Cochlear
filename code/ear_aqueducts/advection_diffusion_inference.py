@@ -119,7 +119,7 @@ x = create_prior_distribution(G_c, args.inference_type)
 #------------------------------------------------------------------------
 exact_x = None
 exact_data = None
-if args.data_type == 'synthetic_from_diffusion':
+if args.data_type == 'syntheticFromDiffusion':
     PDE_form_var_diff = create_PDE_form(real_bc, grid, grid_c, grid_c_fine,
                                    n_grid, h, times, 'heterogeneous') 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
@@ -144,7 +144,7 @@ y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
-if args.data_type == 'synthetic_from_diffusion':
+if args.data_type == 'syntheticFromDiffusion':
     data = y(mean=exact_data).sample()
     #x_var_diff = create_prior_distribution(G_c_var, 'heterogeneous')
     #y_var_diff = Gaussian(A_var_diff(x_var_diff), s_noise**2, geometry=G_cont2D)
