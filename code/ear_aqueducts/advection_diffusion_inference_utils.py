@@ -283,8 +283,9 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
 
     elif unknown_par_type == 'sampleMean':
         # Read data from pickle file
-        tag = unknown_par_value.split('@')[0].replace(':', '_')
-        data_dict = read_experiment_data(unknown_par_value.split('@')[1], tag)
+        print('Reading data from: ', unknown_par_value)
+        tag = unknown_par_value[0].split('@')[0].replace(':', '_')
+        data_dict = read_experiment_data(unknown_par_value[0].split('@')[1], tag)
         samples = data_dict['samples']
         exact_x = samples.mean()
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
@@ -565,11 +566,13 @@ def create_experiment_tag(experiment_par):
     if isinstance(experiment_par.unknown_par_value, list):
         if len(experiment_par.unknown_par_value) == 1:
             unknown_par_value_str = str(experiment_par.unknown_par_value[0])
+            if '@' in unknown_par_value_str:
+                unknown_par_value_str = unknown_par_value_str.split('@')[0]
         elif len(experiment_par.unknown_par_value) == 2:
             unknown_par_value_str = str(experiment_par.unknown_par_value[0])+\
                 '_'+str(experiment_par.unknown_par_value[1])
-    elif isinstance(experiment_par.unknown_par_value, str):
-        unknown_par_value_str = experiment_par.unknown_par_value.split('@')[0]
+    #elif isinstance(experiment_par.unknown_par_value, str):
+    #    unknown_par_value_str = experiment_par.unknown_par_value.split('@')[0]
     else:
         raise Exception('Unknown parameter value not supported')
 
