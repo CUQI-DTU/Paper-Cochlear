@@ -7,12 +7,12 @@ def submit(jobid,cmd):
     memcore = 7000
     maxmem = 8000
     email = 'amaal@dtu.dk'
-    ncores = 10
+    ncores = 1
  
     # begin str for jobscript
     strcmd = '#!/bin/sh\n'
     strcmd += '#BSUB -J ' + jobname + '\n'
-    strcmd += '#BSUB -q hpc\n'
+    strcmd += '#BSUB -q compute\n'
     strcmd += '#BSUB -n ' + str(ncores) + '\n'
     strcmd += '#BSUB -R "span[hosts=1]"\n'
     strcmd += '#BSUB -R "rusage[mem=' + str(memcore) + 'MB]"\n'

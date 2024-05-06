@@ -23,7 +23,9 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     create_experiment_tag,\
     plot_experiment,\
     save_experiment_data,\
-    Args
+    Args,\
+    build_grids,\
+    create_time_steps
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -70,26 +72,18 @@ os.system('cp '+__file__+' '+dir_name+'/')
 
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
-# PDE grid
+# PDE and coefficients grids
 L = locations[-1]*1.01
-n_grid =int(L/5)   # Number of solution nodes
-h = L/(n_grid+1)   # Space step size
-grid = np.linspace(h, L-h, n_grid)
-# Coefficients grid
+coarsening_factor = 5
 n_grid_c = 20
-h_c = L/(n_grid_c+1) 
-grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
-grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
-assert np.isclose(grid_c[-1], L)
+grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
 
 #%% STEP 5: Create the PDE time steps array
 #------------------------------------------
 tau_max = 30*60 # Final time in sec
 cfl = 5 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
-dt_approx = cfl*h**2 # Defining approximate time step size
-n_tau = int(tau_max/dt_approx)+1 # Number of time steps
-tau = np.linspace(0, tau_max, n_tau)
+tau = create_time_steps(h, cfl, tau_max)
 
 #%% STEP 6: Create the domain geometry
 #-------------------------------------
@@ -125,7 +119,7 @@ x = create_prior_distribution(G_c, args.inference_type)
 #------------------------------------------------------------------------
 exact_x = None
 exact_data = None
-if args.data_type == 'synthetic_from_diffusion':
+if args.data_type == 'syntheticFromDiffusion':
     PDE_form_var_diff = create_PDE_form(real_bc, grid, grid_c, grid_c_fine,
                                    n_grid, h, times, 'heterogeneous') 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
@@ -150,7 +144,7 @@ y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
-if args.data_type == 'synthetic_from_diffusion':
+if args.data_type == 'syntheticFromDiffusion':
     data = y(mean=exact_data).sample()
     #x_var_diff = create_prior_distribution(G_c_var, 'heterogeneous')
     #y_var_diff = Gaussian(A_var_diff(x_var_diff), s_noise**2, geometry=G_cont2D)
