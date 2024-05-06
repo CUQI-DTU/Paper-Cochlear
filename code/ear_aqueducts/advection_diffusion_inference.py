@@ -145,7 +145,7 @@ y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
 if args.data_type == 'syntheticFromDiffusion':
-    data = y(mean=exact_data).sample()
+    data = y(x=exact_x).sample()
     #x_var_diff = create_prior_distribution(G_c_var, 'heterogeneous')
     #y_var_diff = Gaussian(A_var_diff(x_var_diff), s_noise**2, geometry=G_cont2D)
     #data = y_var_diff(x_var_diff=exact_x).sample()
