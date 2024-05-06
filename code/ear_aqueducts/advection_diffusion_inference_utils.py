@@ -382,7 +382,7 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
     # exact because it loses properties with pickling. 
     # We pickle its components instead (the geometry, the flag is_par 
     # and the numpy array).
-    if exact:
+    if isinstance(exact,CUQIarray):
         # convert exact to array and save its geometry
         exact_geometry = exact.geometry
         exact_is_par = exact.is_par
@@ -395,7 +395,7 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
     # exact_data because it loses properties with pickling. 
     # We pickle its components instead (the geometry, the flag is_par 
     # and the numpy array).
-    if exact_data:
+    if isinstance(exact_data, CUQIarray):
         # convert exact_data to array and save its geometry
         exact_data_geometry = exact_data.geometry
         exact_data_is_par = exact_data.is_par
@@ -571,9 +571,10 @@ def create_experiment_tag(experiment_par):
         elif len(experiment_par.unknown_par_value) == 2:
             unknown_par_value_str = str(experiment_par.unknown_par_value[0])+\
                 '_'+str(experiment_par.unknown_par_value[1])
-    #elif isinstance(experiment_par.unknown_par_value, str):
-    #    unknown_par_value_str = experiment_par.unknown_par_value.split('@')[0]
+    elif isinstance(experiment_par.unknown_par_value, str):
+        unknown_par_value_str = experiment_par.unknown_par_value.split('@')[0]
     else:
+        print("experiment_par.unknown_par_value", experiment_par.unknown_par_value)
         raise Exception('Unknown parameter value not supported')
 
     data_pt_str = str(experiment_par.add_data_pts[0]) if len(experiment_par.add_data_pts) > 0 else ''
