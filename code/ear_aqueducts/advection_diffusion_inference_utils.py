@@ -25,8 +25,8 @@ class Args:
         self.version = 'v_temp'
         self.sampler = 'MH'
         self.unknown_par_type = 'constant'
-        self.unknown_par_value = [100]
-        self.data_type = 'synthetic_from_diffusion'
+        self.unknown_par_value = [100.0]
+        self.data_type = 'syntheticFromDiffusion'
         self.inference_type = 'constant'
         self.Ns = 20
         self.Nb = 20
@@ -68,17 +68,18 @@ def parse_commandline_args(myargs):
                         type=str, choices=['constant',
                                            'smooth',
                                            'step',
+                                           'sampleMean',
                                            ],
                         default=arg_obj.unknown_par_type,
                         help='Type of unknown parameter, diffusion coefficient')
     parser.add_argument('-unknown_par_value', metavar='unknown_par_value',
                          nargs='*',
-                         type=float,
+                         type=str,
                         default=arg_obj.unknown_par_value,
-                        help='Value of unknown parameter, diffusion coefficient')
+                        help='Value of unknown parameter, diffusion coefficient, if unknown_par_type is constant, provide one value, if unknown_par_type is step, provide two values, if unknown_par_type is smooth, provide two values, if unknown_par_type is sampleMean, provide tag of the experiment concatenated with the directory name where the samples are stored, separated by @')
     parser.add_argument('-data_type', metavar='data_type', type=str,
                         choices=[
-                            'real', 'synthetic_from_diffusion', 'synthetic_from_advection_diffusion'],
+                            'real', 'syntheticFromDiffusion', 'syntheticFromAdvectionDiffusion'],
                         default=arg_obj.data_type,
                         help='Type of data, real or synthetic')
     parser.add_argument('-inference_type', metavar='inference_type', type=str,
@@ -95,7 +96,7 @@ def parse_commandline_args(myargs):
     parser.add_argument('-noise_level', metavar='noise_level', 
                         type=str,
                         default=arg_obj.noise_level,
-                        help='Noise level for data, set to "from_data_var" to read noise level from data that varies for each data point and set to "from_data_avg" to compute average noise level from data and use it for all data points')
+                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to a float representing the noise level')
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
@@ -264,20 +265,32 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
     if unknown_par_type == 'constant':
         exact_x = np.zeros(n_grid_c)
         exact_x[:] = unknown_par_value[0]
+        is_par = False
 
     # if the unknown parameter is varying in space (step function)
     elif unknown_par_type == 'step':
         exact_x = np.zeros(n_grid_c)
         exact_x[0:n_grid_c//2] = unknown_par_value[0]
         exact_x[n_grid_c//2:] = unknown_par_value[1]
+        is_par = False
 
     # if the unknown parameter is varying in space (smooth function)
     elif unknown_par_type == 'smooth':
         low = unknown_par_value[0]
         high = unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
+        is_par = False
 
-    exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=False)
+    elif unknown_par_type == 'sampleMean':
+        # Read data from pickle file
+        tag = unknown_par_value.split('@')[0].replace(':', '_')
+        data_dict = read_experiment_data(unknown_par_value.split('@')[1], tag)
+        samples = data_dict['samples']
+        exact_x = samples.mean()
+        exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
+        is_par = True
+
+    exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
     return exact_x, exact_data
 
@@ -286,14 +299,14 @@ def set_the_noise_std(
         real_data, real_std_data, G_cont2D):
     """Function to set the noise standard deviation. """
     # Use noise levels read from the file
-    if noise_level == "from_data_var":
+    if noise_level == "fromDataVar":
         ## Noise standard deviation
         s_noise = real_std_data
     # Use noise level specified in the command line
-    elif noise_level == "from_data_avg":
+    elif noise_level == "fromDataAvg":
         s_noise = np.mean(real_std_data)
 
-    elif noise_level == "avg_over_time":
+    elif noise_level == "avgOverTime":
         s_noise = real_std_data.reshape(G_cont2D.fun_shape)
         s_noise = np.mean(s_noise, axis=1)
         s_noise = np.repeat(s_noise, G_cont2D.fun_shape[1])
@@ -304,7 +317,7 @@ def set_the_noise_std(
         except:
             raise Exception('Noise level not supported')
         ## Noise standard deviation 
-        if data_type == 'synthetic_from_diffusion':
+        if data_type == 'syntheticFromDiffusion':
             s_noise = noise_level \
                       *np.linalg.norm(exact_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
@@ -356,12 +369,13 @@ def plot_time_series(times, locations, data):
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                     samples, experiment_par, locations, times):
     # is const inference
-    const = True if samples.geometry.par_dim == 1 else False
+    #const = True if samples.geometry.par_dim == 1 else False
 
-    if const:
-        name_str = 'const'
-    else:
-        name_str = 'var'
+    #if const:
+    #    name_str = 'const'
+    #else:
+    #    name_str = 'var'
+    name_str = 'var'
     
     # This is a workaround solution to not pickle the CUQIarray object
     # exact because it loses properties with pickling. 
@@ -405,28 +419,33 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
 
-def read_experiment_data(dir_name, tag, const=True):
+def read_experiment_data(dir_name, tag):
     # Read data from pickle file
-    if const:
-        name_str = 'const'
-    else:
-        name_str = 'var'
-    with open(dir_name +'/output'+ tag+'/'+tag+'_'+name_str+'.pkl', 'rb') as f:
+    file_name = dir_name +'/output'+ tag+'/'+tag+'_var.pkl'
+    print('Reading file: ', file_name)
+    with open(file_name, 'rb') as f:
         data_dict = pickle.load(f)
 
     # Convert exact to CUQIarray with geometry
-    exact = CUQIarray(data_dict['exact'], 
-                      geometry=data_dict['exact_geometry'],
-                      is_par=data_dict['exact_is_par'])
+    if data_dict['exact_geometry'] is not None:
+        exact = CUQIarray(data_dict['exact'], 
+                          geometry=data_dict['exact_geometry'],
+                          is_par=data_dict['exact_is_par'])
+    else:
+        exact = data_dict['exact']
+
     data_dict['exact'] = exact
     # drop geometry and is_par
     data_dict.pop('exact_geometry')
     data_dict.pop('exact_is_par')
 
     # Convert exact_data to CUQIarray with geometry
-    exact_data = CUQIarray(data_dict['exact_data'], 
-                           geometry=data_dict['exact_data_geometry'],
-                           is_par=data_dict['exact_data_is_par'])
+    if data_dict['exact_data_geometry'] is not None:
+        exact_data = CUQIarray(data_dict['exact_data'], 
+                               geometry=data_dict['exact_data_geometry'],
+                               is_par=data_dict['exact_data_is_par'])
+    else:
+        exact_data = data_dict['exact_data']
     data_dict['exact_data'] = exact_data
     # drop geometry and is_par
     data_dict.pop('exact_data_geometry')
@@ -543,11 +562,16 @@ def create_experiment_tag(experiment_par):
     """Method to create a tag from the parameters of the experiment. """
     # Create directory for output
     version = experiment_par.version
-    if len(experiment_par.unknown_par_value) == 1:
-        unknown_par_value_str = str(experiment_par.unknown_par_value[0])
-    elif len(experiment_par.unknown_par_value) == 2:
-        unknown_par_value_str = str(experiment_par.unknown_par_value[0])+\
-            '_'+str(experiment_par.unknown_par_value[1])
+    if isinstance(experiment_par.unknown_par_value, list):
+        if len(experiment_par.unknown_par_value) == 1:
+            unknown_par_value_str = str(experiment_par.unknown_par_value[0])
+        elif len(experiment_par.unknown_par_value) == 2:
+            unknown_par_value_str = str(experiment_par.unknown_par_value[0])+\
+                '_'+str(experiment_par.unknown_par_value[1])
+    elif isinstance(experiment_par.unknown_par_value, str):
+        unknown_par_value_str = experiment_par.unknown_par_value.split('@')[0]
+    else:
+        raise Exception('Unknown parameter value not supported')
 
     data_pt_str = str(experiment_par.add_data_pts[0]) if len(experiment_par.add_data_pts) > 0 else ''
     # Create directory for output
