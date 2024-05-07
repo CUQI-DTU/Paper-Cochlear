@@ -354,8 +354,7 @@ def sample_the_posterior(sampler, posterior, G_c, args):
     
     return posterior_samples_burnthin
 
-def plot_time_series(times, locations, data):
-
+def plot_time_series(times, locations, data, plot_legend=True):
     # Plot data
     color = ['r', 'g', 'b', 'k', 'm', 'c']
     legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
@@ -363,9 +362,12 @@ def plot_time_series(times, locations, data):
     for i in range(len(locations)):
         lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)])[0])
     
-    plt.legend(lines, legends)
+    if plot_legend:
+        plt.legend(lines, legends)
     plt.xlabel('Time (min)')
     plt.ylabel('Concentration')
+
+    return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                     samples, experiment_par, locations, times):
@@ -442,7 +444,7 @@ def read_experiment_data(dir_name, tag):
 
     # Convert exact_data to CUQIarray with geometry
     if data_dict['exact_data_geometry'] is not None:
-        exact_data = CUQIarray(data_dict['exact_data'], 
+        exact_data = CUQIarray(data_dict['exact_data'].flatten(), 
                                geometry=data_dict['exact_data_geometry'],
                                is_par=data_dict['exact_data_is_par'])
     else:
@@ -459,6 +461,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     """Method to plot the numerical experiment results."""
     # Create tag
     tag = create_experiment_tag(experiment_par)
+    # if experiment tag is so long, break it into two lines
+    if len(tag) > 80:
+        tag = tag[:80]+'\n'+tag[80:]
 
     # Expr type (const or var)
     const_inf = True if samples.geometry.par_dim == 1 else False
@@ -476,22 +481,25 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     if exact is not None:
         exact_for_plot = exact if const_true_x==const_inf else None
     # Hight ratio of top and bottom subfigures
-    height_ratios = [1, 1] if const_inf else [1, 1]
+    height_ratios = [0.17, 1.3, 1] if const_inf else [0.17, 1.3, 1]
     # Trace index list
     trace_idx_list = [0] if const_inf else [0, 5, 15]
     # Marker
     marker = 'o' if const_true_x else ''
 
     # Create figure: 
-    fig = plt.figure(figsize=(12, 14), layout='constrained')
+    fig = plt.figure(figsize=(12, 17), layout='constrained')
 
-    subfigs = fig.subfigures(2, 1, height_ratios=height_ratios)
+    subfigs = fig.subfigures(3, 1, height_ratios=height_ratios)
 
-    axsTop = subfigs[0].subplots(3, 2,
+    axsSecond = subfigs[1].subplots(4, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
-                         bottom=0.1, top=0.9,
-                         hspace=0.5, wspace=0.5))
-    axsBottom = subfigs[1].subplots(axsBottom_rows, 2,
+                         bottom=0.1, top=0.95,
+                         hspace=0.64, wspace=0.5))
+    axsFirst = subfigs[0].subplots(1, 1, 
+        gridspec_kw=dict(left=0.1, right=0.9,
+                         bottom=0.1, top=0.5))
+    axsLast = subfigs[2].subplots(axsBottom_rows, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
                          bottom=0.1, top=0.96,
                          hspace=0.5, wspace=0.5))
@@ -501,22 +509,33 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
 
     # Plot exact data
     if exact_data is not None:
-        plt.sca(axsTop[0, 0])
-        plot_time_series(times, locations, exact_data)
+        plt.sca(axsSecond[0, 0])
+        plot_time_series(times, locations, exact_data, plot_legend=False)
         plt.title('Exact data')
 
     # Plot data
-    plt.sca(axsTop[0, 1])
-    plot_time_series(times, locations, data)
-    plt.title('Data')
+    plt.sca(axsSecond[0, 1])
+    plot_time_series(times, locations, data, plot_legend=False)
+    plt.title('Noisy data')
 
     # Plot reconstructed data
-    plt.sca(axsTop[1, 0])
-    plot_time_series(times, locations, mean_recon_data)
+    plt.sca(axsSecond[1, 0])
+    lines, legends = plot_time_series(times, locations, mean_recon_data, plot_legend=False)
     plt.title('Mean reconstructed data')
 
+    # noisy Noisy data - exact data
+    if exact_data is not None:
+        plt.sca(axsSecond[1, 1])
+        plot_time_series(times, locations, data - exact_data, plot_legend=False)
+        plt.title(' Noisy data - exact data\n relative error to noisy data = {:.2f}%'.format(np.linalg.norm(data - exact_data)/np.linalg.norm(data)*100))
+
+    # plot Noisy data - mean reconstructed data
+    plt.sca(axsSecond[2, 0])
+    plot_time_series(times, locations, data - mean_recon_data, plot_legend=False)
+    plt.title('Noisy data - mean reconstructed data\n relative error to noisy data = {:.2f}%'.format(np.linalg.norm(data - mean_recon_data)/np.linalg.norm(data)*100))
+
     # Plot cridible intervals
-    plt.sca(axsTop[1, 1])
+    plt.sca(axsSecond[2, 1])
     samples.funvals.plot_ci(exact = exact_for_plot)
     # If inference type is not constant, plot data locations as vertical lines
     if not const_inf:
@@ -525,19 +544,22 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     plt.title('Posterior samples CI')
 
     # Plot ESS
-    plt.sca(axsTop[2, 0])
+    plt.sca(axsSecond[3, 0])
     ESS_list = np.array(samples.compute_ess()) 
     plt.plot(ESS_list, marker=marker)
-    plt.title('ESS')
+    plt.title('ESS (min = {:.2f})'.format(np.min(ESS_list)))
 
     # Plot exact   
     if exact is not None:
-        plt.sca(axsTop[2, 1])
+        plt.sca(axsSecond[3, 1])
         exact.plot(marker=marker) 
         plt.title('Exact solution')
+    # plot legend 
+    axsFirst.axis('off')
+    axsFirst.legend(lines, legends, loc='center', ncol=3)
 
     # Plot trace
-    samples.plot_trace(trace_idx_list, axes=axsBottom)
+    samples.plot_trace(trace_idx_list, axes=axsLast)
 
     return fig
 
@@ -600,3 +622,29 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
     plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
+
+
+def create_args_list(animals, ears, noise_levels, num_ST_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type='heterogeneous'):
+    args_list = []
+    # Loop over all animals, ears, noise levels and num_ST
+    for animal in animals:
+        for ear in ears:
+            for noise_level in noise_levels:
+                for num_ST in num_ST_list:
+                    for unknown_par_type in unknown_par_types:
+                        for unknown_par_value in unknown_par_values:
+                            args = Args()
+                            args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
+                            args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
+                            args.version = version
+                            args.sampler = sampler
+                            args.data_type = data_type
+                            args.Ns = Ns
+                            args.Nb = Nb
+                            args.noise_level = noise_level
+                            args.num_ST = num_ST
+                            args.inference_type = 'heterogeneous'
+                            args.unknown_par_type = unknown_par_type
+                            args.unknown_par_value = unknown_par_value
+                            args_list.append(args)
+    return args_list
