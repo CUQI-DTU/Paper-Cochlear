@@ -10,6 +10,7 @@ version = 'v21May2024_temp'
 Ns = 20
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
+add_data_pts_list = [[]]
 
 if version == 'v_April22_2024_':
     # Array of all animals

@@ -45,6 +45,8 @@ def create_command(main_command, args):
 
     if isinstance(args.add_data_pts, list) and len(args.add_data_pts)==0:
         add_data_pts_str = ' '
+    elif isinstance(args.add_data_pts, list) and len(args.add_data_pts)>0:
+        add_data_pts_str = ' '.join([str(i) for i in args.add_data_pts])
     else:
         raise Exception("Unknown args.add_data_pts type")
 
