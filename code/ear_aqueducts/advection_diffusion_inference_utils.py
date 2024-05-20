@@ -574,8 +574,8 @@ def process_experiment_par(experiment_par):
     
     # Raise exception if more than one data point is added, unable to
     # create tag
-    if len(experiment_par.add_data_pts) > 1:
-        raise Exception('Only one data point can be added')
+    #if len(experiment_par.add_data_pts) > 1:
+    #    raise Exception('Only one data point can be added')
     
     # If inference type is not both, raise exception
     #if experiment_par.inference_type not in ['both']:
@@ -598,8 +598,8 @@ def create_experiment_tag(experiment_par):
     else:
         print("experiment_par.unknown_par_value", experiment_par.unknown_par_value)
         raise Exception('Unknown parameter value not supported')
-
-    data_pt_str = str(experiment_par.add_data_pts[0]) if len(experiment_par.add_data_pts) > 0 else ''
+    # Concatenate data points
+    data_pt_str = 'pt'+'pt'.join([str(i) for i in experiment_par.add_data_pts]) if len(experiment_par.add_data_pts) > 0 else ''
     # Create directory for output
     tag = experiment_par.animal+'_'+experiment_par.ear+'_'+\
         experiment_par.sampler+'_'+experiment_par.unknown_par_type+'_'+\
