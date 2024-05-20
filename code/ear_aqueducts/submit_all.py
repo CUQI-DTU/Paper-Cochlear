@@ -6,8 +6,8 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v21May2024_temp'
-Ns = 20
+version = 'v21May2024_b'
+Ns = 1000
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
 add_data_pts_list = [[]]
@@ -55,7 +55,7 @@ elif version == 'v20May2024_const_b':
     unknown_par_types = ['constant']
     unknown_par_values = [[100.0]]
 
-elif version == 'v21May2024_temp':
+elif version == 'v21May2024_b':
     # Array of all animals
     noise_levels = [ 0.1, 0.2, "fromDataAvg"]
     animals = [None]
@@ -63,7 +63,7 @@ elif version == 'v21May2024_temp':
     ears = [None]
     num_ST_list = [4]
     add_data_pts_list = [[400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]]
-    sampler = 'MH'#'NUTS'
+    sampler = 'NUTS'
     data_type = 'syntheticFromDiffusion'
     unknown_par_types = ['sampleMean']
     unknown_par_values = ['m1:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
