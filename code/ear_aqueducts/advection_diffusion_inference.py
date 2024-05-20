@@ -87,7 +87,7 @@ os.system('cp '+__file__+' '+dir_name+'/')
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
 # PDE and coefficients grids
-L = locations[-1]*1.3
+L = locations[-1]*1.01
 coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
