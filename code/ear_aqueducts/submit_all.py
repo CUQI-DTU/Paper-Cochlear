@@ -6,7 +6,7 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v06May2024_a'
+version = 'v20May2024_const_a'
 Ns = 20
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -18,7 +18,6 @@ if version == 'v_April22_2024_':
     ears = all_ears()
     noise_levels.remove("avgOverTime")
     num_ST_list = [0, 4]
-    version = 'v_April22_2024_'
     sampler = 'NUTS'
     data_type = 'real'
     unknown_par_types = ['constant']
@@ -30,7 +29,6 @@ elif version == 'v06May2024_a':
     # Array of all ears
     ears = [None]
     num_ST_list = [4]
-    version = 'v06May2024_a'
     sampler = 'NUTS'
     data_type = 'syntheticFromDiffusion'
     unknown_par_types = ['sampleMean']
@@ -44,6 +42,17 @@ elif version == 'v06May2024_a':
                           'm4:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
                           'm6:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
                           'm6:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4']
+
+elif version == 'v20May2024_const_a':
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [4]
+    sampler = 'NUTS'
+    data_type = 'syntheticFromDiffusion'
+    unknown_par_types = ['constant']
+    unknown_par_values = [[100.0]]
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
