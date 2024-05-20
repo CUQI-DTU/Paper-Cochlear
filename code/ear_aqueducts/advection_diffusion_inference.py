@@ -71,6 +71,8 @@ real_bc = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 # locations, including added locations that can be used in synthetic 
 # case only
 locations = np.concatenate((real_locations, np.array(args.add_data_pts)))
+# reorder the locations
+locations = np.sort(locations)
 # times
 times = real_times
 
