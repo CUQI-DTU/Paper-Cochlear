@@ -8,6 +8,7 @@ import numpy as np
 import os
 import cuqi
 import sys
+from copy import deepcopy
 from cuqi.distribution import Gaussian, JointDistribution
 from cuqi.geometry import Continuous2D
 from cuqi.pde import TimeDependentLinearPDE
@@ -38,7 +39,20 @@ np.random.seed(1)
 
 #%% STEP 1: Parse command line arguments
 #---------------------------------------
-args = parse_commandline_args(sys.argv[1:])
+# If no arguments are passed, use the default values
+if len(sys.argv) <= 2:
+    args = Args()
+    args.data_type = 'syntheticFromDiffusion'
+    args.inference_type = 'heterogeneous'
+    args.unknown_par_type = 'constant'
+    args.unknown_par_value = [100.0]
+    args.sampler = 'MH'
+    args.Ns = 20
+    args.Nb = 10
+    args.num_ST = 0
+    args.noise_level = 0.001
+else:
+    args = parse_commandline_args(sys.argv[1:])
 
 # Add arguments that are not passed from the command line
 args_predefined = Args()
@@ -73,7 +87,7 @@ os.system('cp '+__file__+' '+dir_name+'/')
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
 # PDE and coefficients grids
-L = locations[-1]*1.01
+L = locations[-1]*1.3
 coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
@@ -145,10 +159,10 @@ y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
 if args.data_type == 'syntheticFromDiffusion':
-    data = y(x=exact_x).sample()
-    #x_var_diff = create_prior_distribution(G_c_var, 'heterogeneous')
-    #y_var_diff = Gaussian(A_var_diff(x_var_diff), s_noise**2, geometry=G_cont2D)
-    #data = y_var_diff(x_var_diff=exact_x).sample()
+    y_temp = deepcopy(y)
+    y_temp.mean = exact_data
+    data = y_temp.sample()
+
 elif args.data_type == 'real':
     data = real_data
 else:
