@@ -599,7 +599,7 @@ def create_experiment_tag(experiment_par):
         print("experiment_par.unknown_par_value", experiment_par.unknown_par_value)
         raise Exception('Unknown parameter value not supported')
     # Concatenate data points
-    data_pt_str = 'pt'+'pt'.join([str(i) for i in experiment_par.add_data_pts]) if len(experiment_par.add_data_pts) > 0 else ''
+    data_pt_str = '' #'pt'+'pt'.join([str(i) for i in experiment_par.add_data_pts]) if len(experiment_par.add_data_pts) > 0 else ''
     # Create directory for output
     tag = experiment_par.animal+'_'+experiment_par.ear+'_'+\
         experiment_par.sampler+'_'+experiment_par.unknown_par_type+'_'+\
