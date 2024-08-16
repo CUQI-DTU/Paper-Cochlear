@@ -6,7 +6,7 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v16Aug2024_synth_small_a'
+version = 'v16Aug2024_synth_large_a'
 Ns = 1000
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -84,14 +84,39 @@ elif version == 'v16Aug2024_synth_small_a':
     # Array of all ears
     ears = [all_ears()[0]]
     num_ST_list = [0]
-    sampler = 'MH'
-    Ns = 20
-    Nb = 10
+    # opt 1
+    #sampler = 'MH'
+    #Ns = 300000
+    #Nb = 20000
+    # opt 2
+    sampler = 'NUTS'
+    Ns = 200
+    Nb = 20
     data_type = 'syntheticFromDiffusion'
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
     true_a = 0.245
+
+elif version == 'v16Aug2024_synth_large_a':
+    # Array of all animals
+    animals =[all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+    # opt 1
+    #sampler = 'MH'
+    #Ns = 300000
+    #Nb = 20000
+    # opt 2
+    sampler = 'NUTS'
+    Ns = 200
+    Nb = 20
+    data_type = 'syntheticFromDiffusion'
+    unknown_par_types = ['custom_1']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type = 'advection_diffusion'
+    true_a = 0.9
   
 
 
@@ -104,4 +129,4 @@ for args in arg_list:
     print(cmd)
     tag = create_experiment_tag(args)
     print(tag)
-    #submit(tag, cmd)
+    submit(tag, cmd)
