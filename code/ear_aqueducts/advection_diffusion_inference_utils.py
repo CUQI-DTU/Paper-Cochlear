@@ -38,6 +38,7 @@ class Args:
         self.num_CA = 5
         self.num_ST = 0
         self.NUTS_kwargs = {'max_depth': 10}
+        self.true_a = None
 
 def all_animals():
     """Function to return all animals. """
@@ -86,6 +87,8 @@ def parse_commandline_args(myargs):
                             'real', 'syntheticFromDiffusion', 'syntheticFromAdvectionDiffusion'],
                         default=arg_obj.data_type,
                         help='Type of data, real or synthetic')
+    #TODO: syntheticFromAdvectionDiffusion is not used, however, syntheticDiffusion work for both
+    # cases. Maybe you need to combine the two cases in one.
     parser.add_argument('-inference_type', metavar='inference_type', type=str,
                         choices=[
                             'constant', 'heterogeneous', 'advection_diffusion'],
@@ -115,6 +118,9 @@ def parse_commandline_args(myargs):
                         choices=range(9),
                         default=arg_obj.num_ST,
                         help='number of ST points used when -data_pts_type is CA_ST') 
+    parser.add_argument('-true_a', metavar='true_a', type=float, 
+                        default=arg_obj.true_a,
+                        help='true advection speed')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -611,14 +617,15 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     plot_time_series(times, locations, data - mean_recon_data, plot_legend=False)
     plt.title('Noisy data - mean reconstructed data\n relative error to noisy data = {:.2f}%'.format(np.linalg.norm(data - mean_recon_data)/np.linalg.norm(data)*100))
 
-    # Plot cridible intervals
+    # Plot credible intervals
     plt.sca(axsSecond[2, 1])
     samples.funvals.plot_ci(exact = exact_for_plot)
     # If inference type is not constant, plot data locations as vertical lines
-    if not const_inf:
+    if not const_inf and experiment_par.inference_type != 'advection_diffusion':
         for loc in locations:
             plt.axvline(x = loc, color = 'gray', linestyle = '--')
-    plt.title('Posterior samples CI')
+    # TODO: print out the means only in advection diffusion case
+    plt.title('Posterior samples CI (mean advection= {:.2f})'.format(samples.mean()[-1]))
 
     # Plot ESS
     plt.sca(axsSecond[3, 0])
@@ -701,7 +708,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type='heterogeneous'):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type='heterogeneous', true_a=None):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -722,8 +729,9 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                 args.noise_level = noise_level
                                 args.num_ST = num_ST
                                 args.add_data_pts = add_data_pts
-                                args.inference_type = 'heterogeneous'
+                                args.inference_type = inference_type
                                 args.unknown_par_type = unknown_par_type
                                 args.unknown_par_value = unknown_par_value
+                                args.true_a = true_a
                                 args_list.append(args)
     return args_list
