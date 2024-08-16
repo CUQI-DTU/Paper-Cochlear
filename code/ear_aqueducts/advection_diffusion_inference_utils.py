@@ -7,6 +7,7 @@ from cuqi.distribution import Gaussian, GMRF
 from cuqi.sampler import MH, NUTS
 import matplotlib.pyplot as plt
 from custom_distribution import MyDistribution
+from scipy.interpolate import interp1d
 
 try:
     import dill as pickle
@@ -71,6 +72,7 @@ def parse_commandline_args(myargs):
                                            'smooth',
                                            'step',
                                            'sampleMean',
+                                            'custom_1',
                                            ],
                         default=arg_obj.unknown_par_type,
                         help='Type of unknown parameter, diffusion coefficient')
@@ -294,10 +296,11 @@ def create_prior_distribution(G_c, inference_type):
         prior = MyDistribution([prior1, prior2], geometry=G_c )
     return prior
 
-def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=None):
+def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=None, grid_c=None):
     """Function to create exact solution and exact data. """
     #TODO: add a mechanism to insure that a is not None if and only if 
-    # the inference_type is advection_diffusion
+    # the inference_type is advection_diffusion (also find a better way to pass
+    # the grid_c)
     n_grid_c = A.domain_geometry.par_dim
     x_geom = A.domain_geometry
 
@@ -317,7 +320,10 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
 
     # if the unknown parameter is varying in space (smooth function)
     elif unknown_par_type == 'smooth':
-        grid_c = x_geom.grid
+        if a is None:
+            grid_c = x_geom.grid
+        else:
+            grid_c = grid_c
         L = grid_c[-1]
         low = unknown_par_value[0]
         high = unknown_par_value[1]
@@ -332,6 +338,31 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         samples = data_dict['samples']
         exact_x = samples.mean()
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
+        is_par = True
+
+    elif unknown_par_type == 'custom_1':
+        #TODO: this if else is repeated (refactor)
+        if a is None:
+            grid_c = x_geom.grid
+        else:
+            grid_c = grid_c
+        true_custom_grid = \
+        np.array([   0.        ,   96.25220602,  192.50441205,  288.75661807,
+        385.0088241 ,  481.26103012,  577.51323615,  673.76544217,
+        770.0176482 ,  866.26985422,  962.52206025, 1058.77426627,
+       1155.0264723 , 1251.27867832, 1347.53088435, 1443.78309037,
+       1540.03529639, 1636.28750242, 1732.53970844, 1828.79191447,
+       1925.04412049])
+        true_custom_data = \
+        np.array([14.11491597, 12.53944334,  9.02154746,  5.72036963,
+            4.68179363,  7.80182922, 10.1970911 , 11.54031693,
+           12.46494568, 13.05172206, 13.40779027, 13.61382111,
+           13.77862088, 13.86445104, 13.99664015, 14.02779958,
+           14.08190319, 14.10144676, 14.11415816, 14.10891881,
+           14.11514915])
+        # spline interpolation
+        f = interp1d(true_custom_grid, true_custom_data, kind='cubic')
+        exact_x = f(grid_c)
         is_par = True
     ## append "a" value to the end
     if a is not None and unknown_par_type != 'constant':
