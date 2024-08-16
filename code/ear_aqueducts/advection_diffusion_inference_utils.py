@@ -6,6 +6,8 @@ from cuqi.array import CUQIarray
 from cuqi.distribution import Gaussian, GMRF
 from cuqi.sampler import MH, NUTS
 import matplotlib.pyplot as plt
+from custom_distribution import MyDistribution
+
 try:
     import dill as pickle
 except:
@@ -186,22 +188,28 @@ def create_time_steps(h, cfl, tau_max):
     tau = np.linspace(0, tau_max, n_tau)
     return tau
 
-def create_domain_geometry(grid, coefficient_type):
+def create_domain_geometry(grid, inference_type):
     """Function to create domain geometry. """
-    _map = lambda x: x**2
-    if coefficient_type == 'constant':
+    if inference_type == 'advection_diffusion':
+        _map = lambda x: x
+    else:
+        #TODO: unify the map function in the two cases
+        _map = lambda x: x**2
+    if inference_type == 'constant':
         geometry = MappedGeometry( Discrete(1), map=_map)
-    elif coefficient_type == 'heterogeneous':
+    elif inference_type == 'heterogeneous':
         geometry = MappedGeometry( Continuous1D(grid),  map=_map)
+    elif inference_type == 'advection_diffusion':
+        geometry = MappedGeometry( Discrete(len(grid)+1),  map=_map)
     return geometry
 
 def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
-                    coefficient_type):
+                    inference_type):
     """Function to create PDE form. """
     ## Initial condition
     initial_condition = np.zeros(n_grid)
 
-    if coefficient_type == 'constant':
+    if inference_type == 'constant':
         ## Source term (constant diffusion coefficient case)
         def g_const(c, tau_current):
             f_array = np.zeros(n_grid)
@@ -217,7 +225,7 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         def PDE_form(c, tau_current):
             return (D_c_const(c), g_const(c, tau_current), initial_condition)
         
-    elif coefficient_type == 'heterogeneous':
+    elif inference_type == 'heterogeneous':
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
@@ -237,29 +245,62 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         def PDE_form(c, tau_current):
             c = np.interp(grid_c_fine, grid_c, c)
             return (D_c_var(c), g_var(c, tau_current), initial_condition)
-   
+
+    elif inference_type == 'advection_diffusion':
+        ## Source term (varying in space diffusion coefficient case)
+        def g_var(c, tau_current):
+            f_array = np.zeros(n_grid)
+            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc)
+            return f_array
+        
+        ## Differential operator (varying in space diffusion coefficient case)
+        Dx = - np.diag(np.ones(n_grid), 0)+ np.diag(np.ones(n_grid-1), 1) 
+        vec = np.zeros(n_grid)
+        vec[0] = 1
+        Dx = np.concatenate([vec.reshape([1, -1]), Dx], axis=0)
+        Dx /= h # FD derivative matrix
+
+        DA_a = lambda a: (np.diag(np.ones(n_grid-1), 1) +\
+        -np.diag(np.ones(n_grid), 0)) * (a/h)
+
+        D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx 
+        
+        ## PDE form (varying in space diffusion coefficient case)
+        def PDE_form(x, tau_current):
+            x = x**2
+            c = np.interp(grid_c_fine, grid_c, x[:-1])
+            return (D_c_var(c) - DA_a(x[-1]), g_var(x, tau_current), initial_condition)   
 
     return PDE_form
 
-def create_prior_distribution(G_c, coefficient_type):
+def create_prior_distribution(G_c, inference_type):
     """Function to create prior distribution. """
-    if coefficient_type == 'constant':
+    if inference_type == 'constant':
         prior = Gaussian(np.sqrt(400), 100, geometry=G_c)
-    elif coefficient_type == 'heterogeneous':
+    elif inference_type == 'heterogeneous':
         prior = GMRF(
             np.ones(G_c.par_dim)*np.sqrt(300),
             0.2,
             geometry=G_c,
             bc_type='neumann')
+    elif inference_type == 'advection_diffusion':
+        prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
+            0.2,
+            bc_type='neumann')
+        # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
+        # the square root of advection speed that results in a peclet number
+        # of 1)
+        prior2 =Gaussian(0, 0.752**2)# Gaussian(0.5, 0.3**2)
+        prior = MyDistribution([prior1, prior2], geometry=G_c )
     return prior
 
-def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
+def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=None):
     """Function to create exact solution and exact data. """
-
+    #TODO: add a mechanism to insure that a is not None if and only if 
+    # the inference_type is advection_diffusion
     n_grid_c = A.domain_geometry.par_dim
     x_geom = A.domain_geometry
-    grid_c = x_geom.grid
-    L = grid_c[-1]
+
 
     # if the unknown parameter is constant
     if unknown_par_type == 'constant':
@@ -276,6 +317,8 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
 
     # if the unknown parameter is varying in space (smooth function)
     elif unknown_par_type == 'smooth':
+        grid_c = x_geom.grid
+        L = grid_c[-1]
         low = unknown_par_value[0]
         high = unknown_par_value[1]
         exact_x = (high-low)*np.sin(2*np.pi*((L-grid_c))/(4*L)) + low
@@ -290,6 +333,9 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value):
         exact_x = samples.mean()
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
         is_par = True
+    ## append "a" value to the end
+    if a is not None and unknown_par_type != 'constant':
+        exact_x = np.append(exact_x, a)
 
     exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
