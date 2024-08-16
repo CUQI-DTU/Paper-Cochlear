@@ -20,6 +20,7 @@ from cuqi.distribution import UserDefinedDistribution,\
     Gaussian, GMRF
 import numpy as np
 from cuqi.samples import Samples
+from cuqi.array import CUQIarray
 
 
 class MyDistribution(UserDefinedDistribution):
@@ -65,6 +66,8 @@ class MyDistribution(UserDefinedDistribution):
         distributions."""
         start_index = 0
         logpdf = 0
+        if isinstance(x, CUQIarray):
+            x = x.to_numpy()
         for i, d in enumerate(self.distribution_list):
             logpdf += d.logpdf(x[start_index:start_index+d.dim])
             start_index += d.dim
