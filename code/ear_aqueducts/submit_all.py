@@ -6,7 +6,7 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v16Aug2024_synth'
+version = 'v16Aug2024_synth_small_a'
 Ns = 1000
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -78,7 +78,7 @@ elif version == 'v21May2024_c':
                           'm6:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
                           'm6:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4']
 
-elif version == 'v16Aug2024_synth':
+elif version == 'v16Aug2024_synth_small_a':
     # Array of all animals
     animals =[all_animals()[0]]
     # Array of all ears
