@@ -89,7 +89,7 @@ os.system('cp '+__file__+' '+dir_name+'/')
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
 # PDE and coefficients grids
-L = locations[-1]*1.01
+L = locations[-1]*1.1
 coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
@@ -109,7 +109,6 @@ G_c = create_domain_geometry(grid_c, args.inference_type)
 #----------------------------
 PDE_form = create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
                            args.inference_type)
-
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
 PDE = TimeDependentLinearPDE(PDE_form,
@@ -137,19 +136,19 @@ exact_x = None
 exact_data = None
 if args.data_type == 'syntheticFromDiffusion':
     PDE_form_var_diff = create_PDE_form(real_bc, grid, grid_c, grid_c_fine,
-                                   n_grid, h, times, 'heterogeneous') 
+                                   n_grid, h, times, args.inference_type) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
                                           method='backward_euler', 
                                           grid_obs=locations,
                                           time_obs=times) 
-    G_c_var = create_domain_geometry(grid_c, 'heterogeneous')    
+    G_c_var = create_domain_geometry(grid_c, args.inference_type)    
     A_var_diff = PDEModel(
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
     exact_x, exact_data = create_exact_solution_and_data(
         A_var_diff, args.unknown_par_type,
-        args.unknown_par_value)
+        args.unknown_par_value, args.true_a, grid_c=grid_c)
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
