@@ -6,11 +6,12 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v21May2024_c'
+version = 'v16Aug2024_synth'
 Ns = 1000
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
 add_data_pts_list = [[]]
+inference_type = 'heterogeneous'
 
 if version == 'v_April22_2024_':
     # Array of all animals
@@ -77,13 +78,30 @@ elif version == 'v21May2024_c':
                           'm6:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
                           'm6:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4']
 
+elif version == 'v16Aug2024_synth':
+    # Array of all animals
+    animals =[all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+    sampler = 'MH'
+    Ns = 20
+    Nb = 10
+    data_type = 'syntheticFromDiffusion'
+    unknown_par_types = ['custom_1']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type = 'advection_diffusion'
+    true_a = 0.245
+  
+
+
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a)
 for args in arg_list:
     cmd = create_command(main_command, args)
     print()
     print(cmd)
     tag = create_experiment_tag(args)
     print(tag)
-    submit(tag, cmd)
+    #submit(tag, cmd)
