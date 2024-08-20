@@ -567,7 +567,11 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     # Hight ratio of top and bottom subfigures
     height_ratios = [0.2, 1.3, 1] if const_inf else [0.2, 1.3, 1]
     # Trace index list
-    trace_idx_list = [0] if const_inf else [0, 5, 15]
+    trace_idx_list = [0] if const_inf else [0, 5, -1] # last one is advective 
+                                                      # speed in case of 
+                                                      # advection_diffusion
+                                                      # model
+
     # Marker
     marker = 'o' if const_true_x else ''
 
