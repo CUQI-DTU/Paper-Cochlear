@@ -453,7 +453,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    samples, experiment_par, locations, times):
+                    samples, experiment_par, locations, times, lapse_time):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -500,7 +500,8 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  'data': data,
                  'mean_recon_data': mean_recon_data, 'samples': samples,
                  'experiment_par': experiment_par, 'locations': locations,
-                 'times': times}
+                 'times': times,
+                 'lapse_time': lapse_time}
 
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
