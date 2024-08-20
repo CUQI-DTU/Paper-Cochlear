@@ -17,7 +17,7 @@ def submit(jobid,cmd):
     strcmd += '#BSUB -R "span[hosts=1]"\n'
     strcmd += '#BSUB -R "rusage[mem=' + str(memcore) + 'MB]"\n'
     strcmd += '#BSUB -M ' + str(maxmem) + 'MB\n'
-    strcmd += '#BSUB -W 24:00\n'
+    strcmd += '#BSUB -W 52:00\n'
     strcmd += '#BSUB -u ' + email + '\n'
     strcmd += '#BSUB -N \n'
     strcmd += '#BSUB -o hpc/output/output_' + id + '.out\n'
