@@ -179,9 +179,13 @@ posterior = joint(y=data) # condition on y=y_obs
 
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
+# time the sampling
+import time
+start_time = time.time()
 samples = sample_the_posterior(
     args.sampler, posterior, G_c, args)
 
+lapsed_time = time.time() - start_time
 #%% STEP 18: Plot the results
 #----------------------------
 mean_recon_data = \
@@ -205,4 +209,4 @@ save_experiment_data(dir_name, exact_x,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data,
                      samples,
-                     args, locations, times)
+                     args, locations, times, lapsed_time)
