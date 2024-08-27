@@ -17,13 +17,13 @@
 #  Reviewed by: Jakob Sauer Jørgensen (DTU)
 
 from cuqi.distribution import UserDefinedDistribution,\
-    Gaussian, GMRF
+    Gaussian, GMRF, Distribution
 import numpy as np
 from cuqi.samples import Samples
 from cuqi.array import CUQIarray
 
 
-class MyDistribution(UserDefinedDistribution):
+class MyDistribution(Distribution):
     """A custom distribution that is a combination of multiple Gaussian-type
     distributions (e.g. Gaussian and GMRF). The resulting distribution is of
     dimension equal to the sum of the dimensions of the individual
@@ -42,10 +42,10 @@ class MyDistribution(UserDefinedDistribution):
 
         # Save the list of distributions as an attribute
         self.distribution_list = distribution_list
+        self._mutable_vars = []
 
         # Call the constructor of the parent class
-        super().__init__(dim=self.dim, logpdf_func=self.logpdf,
-                         sample_func=self.sample)
+        super().__init__(**kwargs)
     
     @property
     def dim(self):
@@ -53,12 +53,12 @@ class MyDistribution(UserDefinedDistribution):
         dimensions of the individual distributions."""
         return np.sum([d.dim for d in self.distribution_list])
     
-    def sample(self, n):
+    def _sample(self, n):
         """Return a sample of the distribution by concatenating samples from
         the individual distributions."""
         samples = np.concatenate(
             [d.sample(n).samples for d in self.distribution_list], axis=0)
-        return Samples(samples, geometry=self.geometry)
+        return samples
 
     def logpdf(self, x):
         """Return the log of the probability density function of the
