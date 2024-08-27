@@ -198,11 +198,7 @@ def create_time_steps(h, cfl, tau_max):
 
 def create_domain_geometry(grid, inference_type):
     """Function to create domain geometry. """
-    if inference_type == 'advection_diffusion':
-        _map = lambda x: x
-    else:
-        #TODO: unify the map function in the two cases
-        _map = lambda x: x**2
+    _map = lambda x: x**2
     if inference_type == 'constant':
         geometry = MappedGeometry( Discrete(1), map=_map)
     elif inference_type == 'heterogeneous':
@@ -275,7 +271,6 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         
         ## PDE form (varying in space diffusion coefficient case)
         def PDE_form(x, tau_current):
-            x = x**2
             c = np.interp(grid_c_fine, grid_c, x[:-1])
             return (D_c_var(c) - DA_a(x[-1]), g_var(x, tau_current), initial_condition)   
 
@@ -630,7 +625,7 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
         for loc in locations:
             plt.axvline(x = loc, color = 'gray', linestyle = '--')
     # TODO: print out the means only in advection diffusion case
-    plt.title('Posterior samples CI (mean advection= {:.2f})'.format(samples.mean()[-1]))
+    plt.title('Posterior samples CI (mean advection= {:.2f})'.format(samples.funvals.mean()[-1]))
 
     # Plot ESS
     plt.sca(axsSecond[3, 0])
