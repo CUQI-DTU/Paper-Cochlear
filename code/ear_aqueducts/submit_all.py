@@ -6,7 +6,7 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = 'v16Aug2024_real'
+version = "v16Aug2024_synth_large_a_repeat_sept8_fix_geom"
 Ns = 1000
 Nb = 10
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -137,6 +137,26 @@ elif version == 'v16Aug2024_real':
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
     true_a = 100
+
+elif version == "v16Aug2024_synth_large_a_repeat_sept8_fix_geom":
+    # Array of all animals
+    animals =[all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+    # opt 1
+    #sampler = 'MH'
+    #Ns = 300000
+    #Nb = 20000
+    # opt 2
+    sampler = 'NUTS'
+    Ns = 200
+    Nb = 20
+    data_type = 'syntheticFromDiffusion'
+    unknown_par_types = ['custom_1']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type = 'advection_diffusion'
+    true_a = 0.9
 
 
 # Main command to run the job
