@@ -39,6 +39,7 @@ class Args:
         self.num_ST = 0
         self.NUTS_kwargs = {'max_depth': 10}
         self.true_a = None
+        self.rbc = "zero"
 
 def all_animals():
     """Function to return all animals. """
@@ -121,6 +122,9 @@ def parse_commandline_args(myargs):
     parser.add_argument('-true_a', metavar='true_a', type=float, 
                         default=arg_obj.true_a,
                         help='true advection speed')
+    parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData'],
+                        default=arg_obj.rbc,
+                        help='right boundary condition')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -207,8 +211,9 @@ def create_domain_geometry(grid, inference_type):
         geometry = MappedGeometry( Discrete(len(grid)+1),  map=_map)
     return geometry
 
-def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
-                    inference_type):
+def create_PDE_form(real_bc_l, real_bc_r,
+                    grid, grid_c, grid_c_fine, n_grid, h,
+                    times, inference_type):
     """Function to create PDE form. """
     ## Initial condition
     initial_condition = np.zeros(n_grid)
@@ -217,7 +222,9 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         ## Source term (constant diffusion coefficient case)
         def g_const(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c/h**2*np.interp(tau_current, times, real_bc)
+            f_array[0] = c/h**2*np.interp(tau_current, times, real_bc_l)
+            if real_bc_r is not None:
+              f_array[-1] = c/h**2*np.interp(tau_current, times, real_bc_r)
             return f_array
         
         ## Differential operator (constant diffusion coefficient case)
@@ -233,7 +240,9 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc)
+            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc_l)
+            if real_bc_r is not None:
+              f_array[-1] = c[-1]/h**2*np.interp(tau_current, times, real_bc_r)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -254,7 +263,9 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc)
+            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc_l)
+            if real_bc_r is not None:
+                f_array[-1] = c[-1]/h**2*np.interp(tau_current, times, real_bc_r)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -682,6 +693,11 @@ def create_experiment_tag(experiment_par):
     else:
         print("experiment_par.unknown_par_value", experiment_par.unknown_par_value)
         raise Exception('Unknown parameter value not supported')
+    
+    if experiment_par.true_a is not None:
+        true_a_str = str(experiment_par.true_a)
+    else:
+        true_a_str = 'none'
     # Concatenate data points
     data_pt_str = '' #'pt'+'pt'.join([str(i) for i in experiment_par.add_data_pts]) if len(experiment_par.add_data_pts) > 0 else ''
     # Create directory for output
@@ -694,7 +710,9 @@ def create_experiment_tag(experiment_par):
         version+'_'+\
         data_pt_str+'_'+\
         str(experiment_par.num_ST)+'_'+\
-        str(experiment_par.num_CA)
+        str(experiment_par.num_CA)+'_'+\
+        true_a_str+'_'+\
+        experiment_par.rbc
     
     return tag
 
