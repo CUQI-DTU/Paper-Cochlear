@@ -51,6 +51,7 @@ if len(sys.argv) <= 2:
     args.Nb = 10
     args.num_ST = 0
     args.noise_level = 0.001
+    args.rbc = 'fromData'
 else:
     args = parse_commandline_args(sys.argv[1:])
 
@@ -67,7 +68,13 @@ print(tag)
 #----------------------------------------
 real_times, real_locations, real_data, real_std_data = read_data_files(args)
 # The left boundary condition is given by the data  
-real_bc = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+# The right boundary condition is given by the data (if rbc is not "zero")
+if args.rbc == 'fromData':
+    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+else:
+    real_bc_r = None
+
 # locations, including added locations that can be used in synthetic 
 # case only
 locations = np.concatenate((real_locations, np.array(args.add_data_pts)))
@@ -89,7 +96,8 @@ os.system('cp '+__file__+' '+dir_name+'/')
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
 # PDE and coefficients grids
-L = locations[-1]*1.1
+factor_L = 1.2 if args.rbc == 'zero' else 1.01
+L = locations[-1]*factor_L
 coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
@@ -107,7 +115,8 @@ G_c = create_domain_geometry(grid_c, args.inference_type)
 
 # STEP 7: Create the PDE form
 #----------------------------
-PDE_form = create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
+PDE_form = create_PDE_form(real_bc_l, real_bc_r,
+                           grid, grid_c, grid_c_fine, n_grid, h, times,
                            args.inference_type)
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
@@ -135,7 +144,7 @@ x = create_prior_distribution(G_c, args.inference_type)
 exact_x = None
 exact_data = None
 if args.data_type == 'syntheticFromDiffusion':
-    PDE_form_var_diff = create_PDE_form(real_bc, grid, grid_c, grid_c_fine,
+    PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
                                    n_grid, h, times, args.inference_type) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
