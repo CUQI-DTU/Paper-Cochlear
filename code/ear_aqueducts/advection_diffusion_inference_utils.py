@@ -202,16 +202,17 @@ def create_domain_geometry(grid, inference_type):
     if inference_type == 'constant':
         geometry = MappedGeometry( Discrete(1), map=_map)
     elif inference_type == 'heterogeneous':
-        geometry = MappedGeometry( Continuous1D(grid),  map=_map)
+        geometry =  Continuous1D(grid)
     elif inference_type == 'advection_diffusion':
         geometry = MappedGeometry( Discrete(len(grid)+1),  map=_map)
     return geometry
 
 def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
-                    inference_type):
+                    inference_type, adjoint=False, rhs_vec=None):
     """Function to create PDE form. """
     ## Initial condition
-    initial_condition = np.zeros(n_grid)
+    initial_condition = np.ones(n_grid)*100
+    final_condition = np.zeros(n_grid)
 
     if inference_type == 'constant':
         ## Source term (constant diffusion coefficient case)
@@ -226,14 +227,18 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         np.diag(np.ones(n_grid-1), 1) ) / h**2
         
         ## PDE form (constant diffusion coefficient case)
-        def PDE_form(c, tau_current):
-            return (D_c_const(c), g_const(c, tau_current), initial_condition)
+        if not adjoint:
+            def PDE_form(c, tau_current):
+                return (D_c_const(c), g_const(c, tau_current), initial_condition)
+        else:
+            raise Exception('Adjoint not supported for constant diffusion coefficient case')
+        
         
     elif inference_type == 'heterogeneous':
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc)
+            f_array[0] = 0#c[0]/h**2*np.interp(tau_current, times, real_bc)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -242,13 +247,21 @@ def create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
         vec[0] = 1
         Dx = np.concatenate([vec.reshape([1, -1]), Dx], axis=0)
         Dx /= h # FD derivative matrix
-        
+        print('Dx shape: ', Dx.shape)
         D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
+        ## dt 
         
         ## PDE form (varying in space diffusion coefficient case)
-        def PDE_form(c, tau_current):
-            c = np.interp(grid_c_fine, grid_c, c)
-            return (D_c_var(c), g_var(c, tau_current), initial_condition)
+        if not adjoint:
+            def PDE_form(c, tau_current, idx, dt):
+                
+                return (D_c_var(c**2), g_var(c**2, tau_current), initial_condition)
+        else:
+            def PDE_form(c, tau_current, idx, dt):
+                # solve D_c_var(c**2).T * final = -rhs_vec[:,-1] 
+                final = np.linalg.solve(dt*D_c_var(c**2).T, rhs_vec[:,-1])
+                return (D_c_var(c**2).T, 1/dt*rhs_vec[:,-idx-1],
+                         final )
 
     elif inference_type == 'advection_diffusion':
         ## Source term (varying in space diffusion coefficient case)
