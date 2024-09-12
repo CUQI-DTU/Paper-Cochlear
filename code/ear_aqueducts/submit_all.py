@@ -96,7 +96,7 @@ elif version == 'v16Aug2024_synth_small_a':
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
-    true_a = 0.245
+    true_a = 0.245 # funval
 
 elif version == 'v16Aug2024_synth_large_a':
     # Array of all animals
@@ -116,7 +116,7 @@ elif version == 'v16Aug2024_synth_large_a':
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
-    true_a = 0.9
+    true_a = 0.9 # funval
 
 elif version == 'v16Aug2024_real':
     # Array of all animals
@@ -136,7 +136,7 @@ elif version == 'v16Aug2024_real':
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
-    true_a = 100
+    true_a = 100 # funval
 
 elif version == "v16Aug2024_synth_large_a_repeat_sept8_fix_geom":
     # Array of all animals
@@ -156,7 +156,7 @@ elif version == "v16Aug2024_synth_large_a_repeat_sept8_fix_geom":
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
     inference_type = 'advection_diffusion'
-    true_a = 0.9
+    true_a = 0.9 # funval
 
 
 # Main command to run the job
