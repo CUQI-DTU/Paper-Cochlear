@@ -86,7 +86,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-dir_name = 'results5/output'+tag
+dir_name = 'results6/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
