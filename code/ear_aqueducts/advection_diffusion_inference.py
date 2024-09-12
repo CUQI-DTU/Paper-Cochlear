@@ -43,14 +43,15 @@ np.random.seed(1)
 if len(sys.argv) <= 2:
     args = Args()
     args.data_type = 'syntheticFromDiffusion'
-    args.inference_type = 'heterogeneous'
-    args.unknown_par_type = 'constant'
-    args.unknown_par_value = [100.0]
+    args.inference_type = 'advection_diffusion'
+    args.unknown_par_type = 'custom_1'
+    #args.unknown_par_value = [100.0]
     args.sampler = 'MH'
     args.Ns = 20
     args.Nb = 10
     args.num_ST = 0
-    args.noise_level = 0.001
+    args.noise_level = 0.1
+    args.true_a = 0.8 # funval
     args.rbc = 'fromData'
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -207,7 +208,7 @@ fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]),
                 mean_recon_data,
                 samples,
-                args, locations, times)
+                args, locations, times, lapsed_time=lapsed_time, L=L)
 # Save figure
 fig.savefig(dir_name+'/experiment_'+tag+'.png')
 
