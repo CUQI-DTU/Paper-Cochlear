@@ -6,9 +6,10 @@ import os
 from job_submit import submit, create_command
 from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
     create_experiment_tag, create_args_list
-version = "v16Aug2024_synth_large_a_repeat_sept8_fix_geom"
-Ns = 1000
-Nb = 10
+#version = "v16Aug2024_synth_large_a_repeat_sept8_fix_geom"
+version = "v12Sep2024_no_Gibbs_synth"
+Ns_s = [1000]
+Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
 add_data_pts_list = [[]]
 inference_type = 'heterogeneous'
@@ -158,10 +159,31 @@ elif version == "v16Aug2024_synth_large_a_repeat_sept8_fix_geom":
     inference_type = 'advection_diffusion'
     true_a = 0.9 # funval
 
+if version == "v12Sep2024_no_Gibbs_synth":
+    # Array of all animals
+    animals =[all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+    # opt 1
+    #sampler = 'MH'
+    #Ns = 300000
+    #Nb = 20000
+    # opt 2
+    sampler = ['NUTS', 'MH']
+    Ns = [1000, 5000000] # try 10000000 for MH
+    Nb = [20, 500000]
+    rbc = ['zero', 'fromData']
+    data_type = 'syntheticFromDiffusion'
+    unknown_par_types = ['custom_1']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type = 'advection_diffusion'
+    true_a = [0.1, 0.9] # funval
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc)
+print("length of arg_list: ", len(arg_list))
 for args in arg_list:
     cmd = create_command(main_command, args)
     print()
