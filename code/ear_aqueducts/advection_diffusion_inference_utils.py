@@ -677,21 +677,23 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
         # print inferred a
         axesLast.text(0.1, 0.5, 'Inferred a: {:.2f}'.format(samples.funvals.mean()[-1]))
     if experiment_par.inference_type == 'advection_diffusion':
-        min_exact_peclet = peclet_number(a=experiment_par.true_a,
+        if exact is not None:
+            min_exact_peclet = peclet_number(a=experiment_par.true_a,
                                          d=np.max(exact[:-1])**2,
                                          L=L)
-        max_exact_peclet = peclet_number(a=experiment_par.true_a,
+            max_exact_peclet = peclet_number(a=experiment_par.true_a,
                                          d=np.min(exact[:-1])**2,
                                          L=L)
-        min_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
+            axesLast.text(0.1, 0.35, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
+
+            min_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
                                             d=np.max(exact[:-1])**2,
                                             L=L)
-        max_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
+            max_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
                                             d=np.min(exact[:-1])**2,
                                             L=L)
-        # the four peclet numbers
-        axesLast.text(0.1, 0.35, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
-        axesLast.text(0.1, 0.2, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
+
+            axesLast.text(0.1, 0.2, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
     return fig
 
 def process_experiment_par(experiment_par):
