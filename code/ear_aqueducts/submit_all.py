@@ -170,9 +170,9 @@ if version == "v12Sep2024_no_Gibbs_synth":
     #Ns = 300000
     #Nb = 20000
     # opt 2
-    sampler = ['NUTS', 'MH']
-    Ns = [1000, 5000000] # try 10000000 for MH
-    Nb = [20, 500000]
+    sampler = ['NUTS', 'MH', 'MH']
+    Ns = [1000, 5000000, 10000000] # try 10000000 for MH
+    Nb = [20, 500000, 1000000]
     rbc = ['zero', 'fromData']
     data_type = 'syntheticFromDiffusion'
     unknown_par_types = ['custom_1']
