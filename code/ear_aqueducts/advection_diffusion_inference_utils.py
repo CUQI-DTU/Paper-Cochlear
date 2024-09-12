@@ -351,6 +351,8 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = samples.mean()
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
         is_par = True
+        if a is not None:
+            a = np.sqrt(a)
 
     elif unknown_par_type == 'custom_1':
         #TODO: this if else is repeated (refactor)
@@ -376,6 +378,9 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         f = interp1d(true_custom_grid, true_custom_data, kind='cubic')
         exact_x = f(grid_c)
         is_par = True
+        if a is not None:
+            a = np.sqrt(a)
+
     ## append "a" value to the end
     if a is not None and unknown_par_type != 'constant':
         exact_x = np.append(exact_x, a)
@@ -547,7 +552,7 @@ def read_experiment_data(dir_name, tag):
     return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
-                    samples, experiment_par, locations, times):
+                    samples, experiment_par, locations, times, lapsed_time=None, L=None):
     """Method to plot the numerical experiment results."""
     # Create tag
     tag = create_experiment_tag(experiment_par)
@@ -571,7 +576,7 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     if exact is not None:
         exact_for_plot = exact if const_true_x==const_inf else None
     # Hight ratio of top and bottom subfigures
-    height_ratios = [0.2, 1.3, 1] if const_inf else [0.2, 1.3, 1]
+    height_ratios = [0.2, 1.3, 1, 0.2] if const_inf else [0.2, 1.3, 1, 0.2]
     # Trace index list
     trace_idx_list = [0] if const_inf else [0, 5, -1] # last one is advective 
                                                       # speed in case of 
@@ -582,9 +587,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     marker = 'o' if const_true_x else ''
 
     # Create figure: 
-    fig = plt.figure(figsize=(12, 17), layout='constrained')
+    fig = plt.figure(figsize=(12, 18), layout='constrained')
 
-    subfigs = fig.subfigures(3, 1, height_ratios=height_ratios)
+    subfigs = fig.subfigures(4, 1, height_ratios=height_ratios)
 
     axsSecond = subfigs[1].subplots(4, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
@@ -593,10 +598,16 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     axsFirst = subfigs[0].subplots(1, 1, 
         gridspec_kw=dict(left=0.1, right=0.9,
                          bottom=0.1, top=0.5))
-    axsLast = subfigs[2].subplots(axsBottom_rows, 2,
+    axesThird = subfigs[2].subplots(axsBottom_rows, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
                          bottom=0.1, top=0.96,
                          hspace=0.5, wspace=0.5))
+    
+    # last subfigure is empty and used to write text
+    axesLast = subfigs[3].subplots(1, 1, 
+        gridspec_kw=dict(left=0.1, right=0.9,
+                         bottom=0.1, top=0.9))
+    
 
     # Add super title
     subfigs[0].suptitle('Experiment results: '+tag)
@@ -654,8 +665,33 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     axsFirst.legend(lines, legends, loc='center', ncol=3)
 
     # Plot trace
-    samples.plot_trace(trace_idx_list, axes=axsLast)
+    samples.plot_trace(trace_idx_list, axes=axesThird)
 
+    # write lapse time, exact a , exact peclet number, and mean peclet number
+    # in the last subfigure
+    axesLast.axis('off')
+    axesLast.text(0.1, 0.8, 'Lapse time: {:.2f} sec'.format(lapsed_time))
+    if experiment_par.true_a is not None:
+        # print exact a
+        axesLast.text(0.1, 0.65, 'Exact a: {:.2f}'.format(experiment_par.true_a))
+        # print inferred a
+        axesLast.text(0.1, 0.5, 'Inferred a: {:.2f}'.format(samples.funvals.mean()[-1]))
+    if experiment_par.inference_type == 'advection_diffusion':
+        min_exact_peclet = peclet_number(a=experiment_par.true_a,
+                                         d=np.max(exact[:-1])**2,
+                                         L=L)
+        max_exact_peclet = peclet_number(a=experiment_par.true_a,
+                                         d=np.min(exact[:-1])**2,
+                                         L=L)
+        min_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
+                                            d=np.max(exact[:-1])**2,
+                                            L=L)
+        max_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
+                                            d=np.min(exact[:-1])**2,
+                                            L=L)
+        # the four peclet numbers
+        axesLast.text(0.1, 0.35, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
+        axesLast.text(0.1, 0.2, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
     return fig
 
 def process_experiment_par(experiment_par):
@@ -753,3 +789,29 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                 args.true_a = true_a
                                 args_list.append(args)
     return args_list
+
+def peclet_number(a, d, L):
+    """Function to compute the peclet number.
+    Parameters
+    ----------
+    a : float
+        Advection speed.
+    d : float
+        Diffusion coefficient.
+    L : float
+        Length of the domain.
+    """ 
+    return a*L/d
+
+def advection_speed(peclet_number, d, L):
+    """Function to compute the advection speed.
+    Parameters
+    ----------
+    peclet_number : float
+        Peclet number.
+    d : float
+        Diffusion coefficient.
+    L : float
+        Length of the domain.
+    """ 
+    return peclet_number*d/L
