@@ -762,7 +762,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type='heterogeneous', true_a=None):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type='heterogeneous', true_a_s=None, rbc_s=None):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -772,22 +772,27 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                     for add_data_pts in add_data_pts_list:
                         for unknown_par_type in unknown_par_types:
                             for unknown_par_value in unknown_par_values:
-                                args = Args()
-                                args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
-                                args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
-                                args.version = version
-                                args.sampler = sampler
-                                args.data_type = data_type
-                                args.Ns = Ns
-                                args.Nb = Nb
-                                args.noise_level = noise_level
-                                args.num_ST = num_ST
-                                args.add_data_pts = add_data_pts
-                                args.inference_type = inference_type
-                                args.unknown_par_type = unknown_par_type
-                                args.unknown_par_value = unknown_par_value
-                                args.true_a = true_a
-                                args_list.append(args)
+                                for i_sampler, sampler in enumerate(samplers):
+                                    for true_a in true_a_s:
+                                        for rbc in rbc_s:
+
+                                            args = Args()
+                                            args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
+                                            args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
+                                            args.version = version
+                                            args.sampler = sampler
+                                            args.data_type = data_type
+                                            args.Ns = Ns_s[i_sampler]
+                                            args.Nb = Nb_s[i_sampler]
+                                            args.noise_level = noise_level
+                                            args.num_ST = num_ST
+                                            args.add_data_pts = add_data_pts
+                                            args.inference_type = inference_type
+                                            args.unknown_par_type = unknown_par_type
+                                            args.unknown_par_value = unknown_par_value
+                                            args.true_a = true_a
+                                            args.rbc = rbc
+                                            args_list.append(args)
     return args_list
 
 def peclet_number(a, d, L):
