@@ -12,7 +12,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v14septCASynthDiff"
 #version = "v14septCARealAdvDiff"
 #version = "v14septCARealDiff"
-version = "v14septCASTSynthDiff"
+#version = "v14septCASTSynthDiff"
+version = "v14septCASTRealDiff"
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -297,10 +298,7 @@ if version == "v14septCASTSynthDiff":
     animals = [None]
     # Array of all ears
     ears = [None]
-
-
     num_ST_list = [4]
-
     sampler = ['NUTS']
     Ns = [3000]
     Nb = [20]
@@ -320,6 +318,23 @@ if version == "v14septCASTSynthDiff":
                           'm6:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4']
     unknown_par_types = ['sampleMean']*len(unknown_par_values)
 
+if version == "v14septCASTRealDiff":
+
+    noise_levels = ["fromDataAvg"]
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [4]
+    sampler = ['NUTS']
+    Ns = [3000]
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['zero'] 
+    unknown_par_types = ['constant']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
 arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc)
