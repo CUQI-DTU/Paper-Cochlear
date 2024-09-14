@@ -10,7 +10,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v12Sep2024_no_Gibbs_real"
 #version = "v14septCASynthAdvDiff"
 #version = "v14septCASynthDiff"
-version = "v14septCARealAdvDiff" 
+#version = "v14septCARealAdvDiff"
+version = "v14septCARealDiff"
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -262,6 +263,32 @@ if version == "v14septCASynthDiff":
     inference_type = ['constant', 'heterogeneous']
     true_a = [0.1] # funval (value not used)
     noise_levels = ["fromDataAvg"]
+
+if version == "v14septCARealDiff":
+# case
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    # opt 1
+    #sampler = 'MH'
+    #Ns = 300000
+    #Nb = 20000
+    # opt 2
+    sampler = ['NUTS']
+    Ns = [3000] # try 10000000 for MH
+    Nb = [20]
+    rbc = ['zero']
+    data_type = 'real'
+    unknown_par_types = ['constant']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type = ['heterogeneous']
+    true_a = [0.1] # funval (value not used)
+    noise_levels = ["fromDataAvg"]
+
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
