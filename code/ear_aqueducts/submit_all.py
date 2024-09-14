@@ -11,7 +11,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v14septCASynthAdvDiff"
 #version = "v14septCASynthDiff"
 #version = "v14septCARealAdvDiff"
-version = "v14septCARealDiff"
+#version = "v14septCARealDiff"
+version = "v14septCASTSynthDiff"
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -289,6 +290,35 @@ if version == "v14septCARealDiff":
     true_a = [0.1] # funval (value not used)
     noise_levels = ["fromDataAvg"]
 
+if version == "v14septCASTSynthDiff":
+
+    noise_levels = ["fromDataAvg"]
+    # Array of all animals
+    animals = [None]
+    # Array of all ears
+    ears = [None]
+
+
+    num_ST_list = [4]
+
+    sampler = ['NUTS']
+    Ns = [3000]
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['zero'] 
+    unknown_par_values = ['m1:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm1:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm2:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm2:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm3:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm3:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm4:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm4:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm6:l:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4',
+                          'm6:r:NUTS:constant:100.0:real:heterogeneous:1000:0.1:v:April22:2024:a::4:5@results4']
+    unknown_par_types = ['sampleMean']*len(unknown_par_values)
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"

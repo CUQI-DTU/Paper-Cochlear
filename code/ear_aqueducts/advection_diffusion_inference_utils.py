@@ -312,7 +312,10 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
     """Function to create exact solution and exact data. """
     # if unknown_par_value is a list of strings, convert it to a list of floats
     if isinstance(unknown_par_value, list):
-        unknown_par_value = [float(item) for item in unknown_par_value]
+        try:
+            unknown_par_value = [float(item) for item in unknown_par_value]
+        except:
+            pass
     
     #TODO: add a mechanism to insure that a is not None if and only if 
     # the inference_type is advection_diffusion (also find a better way to pass
@@ -783,8 +786,8 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                             for inference_type in inference_type_s: 
 
                                                 args = Args()
-                                                args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
-                                                args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
+                                                args.animal = animal if animal is not None else unknown_par_values[i_unknown_par_type].split(':')[0]
+                                                args.ear = ear if ear is not None else unknown_par_values[i_unknown_par_type].split(':')[1]
                                                 args.version = version
                                                 args.sampler = sampler
                                                 args.data_type = data_type
