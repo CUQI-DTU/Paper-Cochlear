@@ -9,7 +9,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v16Aug2024_synth_large_a_repeat_sept8_fix_geom"
 #version = "v12Sep2024_no_Gibbs_real"
 #version = "v14septCASynthAdvDiff"
-version = "v14septCASynthDiff"
+#version = "v14septCASynthDiff"
+version = "v14septCARealAdvDiff" 
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -210,11 +211,6 @@ if version == "v14septCASynthAdvDiff":
     ears = [all_ears()[0]]
     num_ST_list = [0]
 
-    # opt 1
-    #sampler = 'MH'
-    #Ns = 300000
-    #Nb = 20000
-    # opt 2
     sampler = ['NUTS']
     Ns = [3000] # try 10000000 for MH
     Nb = [20]
@@ -222,8 +218,26 @@ if version == "v14septCASynthAdvDiff":
     data_type = 'syntheticFromDiffusion'
     unknown_par_types = ['custom_1']
     unknown_par_values = [[100.0]] # this value is not used in the code supposedly
-    inference_type = 'advection_diffusion'
+    inference_type = ['advection_diffusion']
     true_a = [0.1, 0.9] # funval 
+    noise_levels = ["fromDataAvg"]
+
+if version == "v14septCARealAdvDiff":
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [3000] # try 10000000 for MH
+    Nb = [20]
+    rbc = ['zero']
+    data_type = 'real'
+    unknown_par_types = ['custom_1']
+    unknown_par_values = [[100.0]] # this value is not used in the code supposedly
+    inference_type =['advection_diffusion']
+    true_a = [0.1] # funval 
     noise_levels = ["fromDataAvg"]
 
 if version == "v14septCASynthDiff":
