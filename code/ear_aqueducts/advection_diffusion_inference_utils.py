@@ -310,6 +310,10 @@ def create_prior_distribution(G_c, inference_type):
 
 def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=None, grid_c=None):
     """Function to create exact solution and exact data. """
+    # if unknown_par_value is a list of strings, convert it to a list of floats
+    if isinstance(unknown_par_value, list):
+        unknown_par_value = [float(item) for item in unknown_par_value]
+    
     #TODO: add a mechanism to insure that a is not None if and only if 
     # the inference_type is advection_diffusion (also find a better way to pass
     # the grid_c)
@@ -333,7 +337,7 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
     # if the unknown parameter is varying in space (smooth function)
     elif unknown_par_type == 'smooth':
         if a is None:
-            grid_c = x_geom.grid
+            grid_c = grid_c#x_geom.grid
         else:
             grid_c = grid_c
         L = grid_c[-1]
@@ -384,7 +388,6 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
     ## append "a" value to the end
     if a is not None and unknown_par_type != 'constant':
         exact_x = np.append(exact_x, a)
-
     exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
     return exact_x, exact_data
@@ -764,7 +767,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type='heterogeneous', true_a_s=None, rbc_s=None):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -772,29 +775,30 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
             for noise_level in noise_levels:
                 for num_ST in num_ST_list:
                     for add_data_pts in add_data_pts_list:
-                        for unknown_par_type in unknown_par_types:
-                            for unknown_par_value in unknown_par_values:
+                        for i_unknown_par_type, unknown_par_type in enumerate(unknown_par_types):
+                            #for unknown_par_value in unknown_par_values:
                                 for i_sampler, sampler in enumerate(samplers):
                                     for true_a in true_a_s:
                                         for rbc in rbc_s:
+                                            for inference_type in inference_type_s: 
 
-                                            args = Args()
-                                            args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
-                                            args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
-                                            args.version = version
-                                            args.sampler = sampler
-                                            args.data_type = data_type
-                                            args.Ns = Ns_s[i_sampler]
-                                            args.Nb = Nb_s[i_sampler]
-                                            args.noise_level = noise_level
-                                            args.num_ST = num_ST
-                                            args.add_data_pts = add_data_pts
-                                            args.inference_type = inference_type
-                                            args.unknown_par_type = unknown_par_type
-                                            args.unknown_par_value = unknown_par_value
-                                            args.true_a = true_a
-                                            args.rbc = rbc
-                                            args_list.append(args)
+                                                args = Args()
+                                                args.animal = animal if animal is not None else unknown_par_value.split(':')[0]
+                                                args.ear = ear if ear is not None else unknown_par_value.split(':')[1]
+                                                args.version = version
+                                                args.sampler = sampler
+                                                args.data_type = data_type
+                                                args.Ns = Ns_s[i_sampler]
+                                                args.Nb = Nb_s[i_sampler]
+                                                args.noise_level = noise_level
+                                                args.num_ST = num_ST
+                                                args.add_data_pts = add_data_pts
+                                                args.inference_type = inference_type
+                                                args.unknown_par_type = unknown_par_type
+                                                args.unknown_par_value = unknown_par_values[i_unknown_par_type]
+                                                args.true_a = true_a
+                                                args.rbc = rbc
+                                                args_list.append(args)
     return args_list
 
 def peclet_number(a, d, L):

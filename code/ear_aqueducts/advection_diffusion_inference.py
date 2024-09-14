@@ -86,7 +86,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-dir_name = 'results8/output'+tag
+dir_name = 'results9/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -145,20 +145,24 @@ x = create_prior_distribution(G_c, args.inference_type)
 exact_x = None
 exact_data = None
 if args.data_type == 'syntheticFromDiffusion':
+    temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
     PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
-                                   n_grid, h, times, args.inference_type) 
+                                   n_grid, h, times, temp_inf_type) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
                                           method='backward_euler', 
                                           grid_obs=locations,
                                           time_obs=times) 
-    G_c_var = create_domain_geometry(grid_c, args.inference_type)    
+    G_c_var = create_domain_geometry(grid_c, temp_inf_type)    
     A_var_diff = PDEModel(
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
+
+
     exact_x, exact_data = create_exact_solution_and_data(
         A_var_diff, args.unknown_par_type,
-        args.unknown_par_value, args.true_a, grid_c=grid_c)
+        args.unknown_par_value, args.true_a if args.inference_type == 'advection_diffusion' else None,
+        grid_c=grid_c)
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
