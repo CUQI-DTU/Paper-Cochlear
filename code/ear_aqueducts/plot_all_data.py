@@ -7,22 +7,19 @@ import cuqi
 import sys
 from advection_diffusion_inference_utils import\
     read_data_files,\
-    plot_time_series
+    plot_time_series,\
+    all_animals,\
+    all_ears,\
+    Args
 import matplotlib.pyplot as plt
 
 print('cuqi version:')
 print(cuqi.__version__)
 
-class Args:
-    def __init__(self, animal, ear, num_CA, num_ST):
-        self.animal = animal
-        self.ear = ear
-        self.num_CA = num_CA
-        self.num_ST = num_ST
-
-args = Args('m1', 'l', 5, 0)
-ears = ['l', 'r']
-animals = ['m1', 'm2', 'm3', 'm4', 'm6']
+# Create Args object
+args = Args()
+ears =  all_ears()
+animals = all_animals()
 
 # Create 2 figures each with 5 rows and 2 columns
 fig1, axs1 = plt.subplots(5, 2, figsize=(10, 20))

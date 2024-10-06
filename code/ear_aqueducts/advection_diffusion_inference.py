@@ -8,6 +8,7 @@ import numpy as np
 import os
 import cuqi
 import sys
+from copy import deepcopy
 from cuqi.distribution import Gaussian, JointDistribution
 from cuqi.geometry import Continuous2D
 from cuqi.pde import TimeDependentLinearPDE
@@ -22,7 +23,10 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     sample_the_posterior,\
     create_experiment_tag,\
     plot_experiment,\
-    save_experiment_data
+    save_experiment_data,\
+    Args,\
+    build_grids,\
+    create_time_steps
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -35,7 +39,27 @@ np.random.seed(1)
 
 #%% STEP 1: Parse command line arguments
 #---------------------------------------
-args = parse_commandline_args(sys.argv[1:])
+# If no arguments are passed, use the default values
+if len(sys.argv) <= 2:
+    args = Args()
+    args.data_type = 'syntheticFromDiffusion'
+    args.inference_type = 'advection_diffusion'
+    args.unknown_par_type = 'custom_1'
+    #args.unknown_par_value = [100.0]
+    args.sampler = 'MH'
+    args.Ns = 20
+    args.Nb = 10
+    args.num_ST = 0
+    args.noise_level = 0.1
+    args.true_a = 0.8 # funval
+    args.rbc = 'fromData'
+else:
+    args = parse_commandline_args(sys.argv[1:])
+
+# Add arguments that are not passed from the command line
+args_predefined = Args()
+args.NUTS_kwargs = args_predefined.NUTS_kwargs
+
 # create a tag from the parameters of the experiment
 tag = create_experiment_tag(args)
 print('Tag:')
@@ -45,16 +69,24 @@ print(tag)
 #----------------------------------------
 real_times, real_locations, real_data, real_std_data = read_data_files(args)
 # The left boundary condition is given by the data  
-real_bc = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+# The right boundary condition is given by the data (if rbc is not "zero")
+if args.rbc == 'fromData':
+    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+else:
+    real_bc_r = None
+
 # locations, including added locations that can be used in synthetic 
 # case only
 locations = np.concatenate((real_locations, np.array(args.add_data_pts)))
+# reorder the locations
+locations = np.sort(locations)
 # times
 times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-dir_name = 'results3/output'+tag
+dir_name = 'results15/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -64,26 +96,19 @@ os.system('cp '+__file__+' '+dir_name+'/')
 
 #%% STEP 4: Create the PDE grid and coefficients grid
 #----------------------------------------------------
-# PDE grid
-L = locations[-1]*1.01
-n_grid =int(L/5)   # Number of solution nodes
-h = L/(n_grid+1)   # Space step size
-grid = np.linspace(h, L-h, n_grid)
-# Coefficients grid
+# PDE and coefficients grids
+factor_L = 1.2 if args.rbc == 'zero' else 1.01
+L = locations[-1]*factor_L
+coarsening_factor = 5
 n_grid_c = 20
-h_c = L/(n_grid_c+1) 
-grid_c = np.linspace(0, L, n_grid_c+1, endpoint=True)
-grid_c_fine = np.linspace(0, L, n_grid+1, endpoint=True)
-assert np.isclose(grid_c[-1], L)
+grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
 
 #%% STEP 5: Create the PDE time steps array
 #------------------------------------------
 tau_max = 30*60 # Final time in sec
 cfl = 5 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
-dt_approx = cfl*h**2 # Defining approximate time step size
-n_tau = int(tau_max/dt_approx)+1 # Number of time steps
-tau = np.linspace(0, tau_max, n_tau)
+tau = create_time_steps(h, cfl, tau_max)
 
 #%% STEP 6: Create the domain geometry
 #-------------------------------------
@@ -91,9 +116,9 @@ G_c = create_domain_geometry(grid_c, args.inference_type)
 
 # STEP 7: Create the PDE form
 #----------------------------
-PDE_form = create_PDE_form(real_bc, grid, grid_c, grid_c_fine, n_grid, h, times,
+PDE_form = create_PDE_form(real_bc_l, real_bc_r,
+                           grid, grid_c, grid_c_fine, n_grid, h, times,
                            args.inference_type)
-
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
 PDE = TimeDependentLinearPDE(PDE_form,
@@ -119,21 +144,25 @@ x = create_prior_distribution(G_c, args.inference_type)
 #------------------------------------------------------------------------
 exact_x = None
 exact_data = None
-if args.data_type == 'synthetic_from_diffusion':
-    PDE_form_var_diff = create_PDE_form(real_bc, grid, grid_c, grid_c_fine,
-                                   n_grid, h, times, 'heterogeneous') 
+if args.data_type == 'syntheticFromDiffusion':
+    temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
+    PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
+                                   n_grid, h, times, temp_inf_type) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
                                           method='backward_euler', 
                                           grid_obs=locations,
                                           time_obs=times) 
-    G_c_var = create_domain_geometry(grid_c, 'heterogeneous')    
+    G_c_var = create_domain_geometry(grid_c, temp_inf_type)    
     A_var_diff = PDEModel(
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
+
+
     exact_x, exact_data = create_exact_solution_and_data(
         A_var_diff, args.unknown_par_type,
-        args.unknown_par_value)
+        args.unknown_par_value, args.true_a if args.inference_type == 'advection_diffusion' else None,
+        grid_c=grid_c)
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
@@ -144,11 +173,11 @@ y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
-if args.data_type == 'synthetic_from_diffusion':
-    data = y(mean=exact_data).sample()
-    #x_var_diff = create_prior_distribution(G_c_var, 'heterogeneous')
-    #y_var_diff = Gaussian(A_var_diff(x_var_diff), s_noise**2, geometry=G_cont2D)
-    #data = y_var_diff(x_var_diff=exact_x).sample()
+if args.data_type == 'syntheticFromDiffusion':
+    y_temp = deepcopy(y)
+    y_temp.mean = exact_data
+    data = y_temp.sample()
+
 elif args.data_type == 'real':
     data = real_data
 else:
@@ -164,9 +193,13 @@ posterior = joint(y=data) # condition on y=y_obs
 
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
+# time the sampling
+import time
+start_time = time.time()
 samples = sample_the_posterior(
-    args.sampler, posterior, args.Ns, args.Nb, G_c)
+    args.sampler, posterior, G_c, args)
 
+lapsed_time = time.time() - start_time
 #%% STEP 18: Plot the results
 #----------------------------
 mean_recon_data = \
@@ -179,7 +212,7 @@ fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]),
                 mean_recon_data,
                 samples,
-                args, locations, times)
+                args, locations, times, lapsed_time=lapsed_time, L=L)
 # Save figure
 fig.savefig(dir_name+'/experiment_'+tag+'.png')
 
@@ -190,4 +223,4 @@ save_experiment_data(dir_name, exact_x,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data,
                      samples,
-                     args, locations, times)
+                     args, locations, times, lapsed_time)
