@@ -14,7 +14,7 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v14septCARealDiff"
 #version = "v14septCASTSynthDiff"
 #version = "v14septCASTRealDiff"
-version = "temp_v13octCARealDiff"
+version = "v13octCARealDiffGibbs"
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
