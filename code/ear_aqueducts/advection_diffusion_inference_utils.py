@@ -211,7 +211,15 @@ def create_domain_geometry(grid, inference_type):
     elif inference_type == 'heterogeneous':
         geometry = MappedGeometry( Continuous1D(grid),  map=_map)
     elif inference_type == 'advection_diffusion':
-        geometry = MappedGeometry( Discrete(len(grid)+1),  map=_map)
+        # advection diffusion map is x^2 except for the last element which is x
+        def _map_advection_diffusion(x):
+            output = np.zeros_like(x)
+            output[:-1] = x[:-1]**2
+            output[-1] = x[-1]
+            x = output
+            return x
+        geometry = MappedGeometry( Discrete(len(grid)+1),
+                                  map=_map_advection_diffusion)
     return geometry
 
 def create_PDE_form(real_bc_l, real_bc_r,
@@ -277,9 +285,18 @@ def create_PDE_form(real_bc_l, real_bc_r,
         vec[0] = 1
         Dx = np.concatenate([vec.reshape([1, -1]), Dx], axis=0)
         Dx /= h # FD derivative matrix
-
-        DA_a = lambda a: (np.diag(np.ones(n_grid-1), 1) +\
-        -np.diag(np.ones(n_grid), 0)) * (a/h)
+ 
+        def DA_a(a):
+            if a > 0:
+                # use upwind scheme
+                return (np.diag(np.ones(n_grid-1), 1) +\
+            -np.diag(np.ones(n_grid), 0)) * (a/h)
+            else:
+                # use downwind scheme
+                return (np.diag(np.ones(n_grid), 0) +\
+            -np.diag(np.ones(n_grid-1), -1)) * (a/h)
+        #DA_a = lambda a: (np.diag(np.ones(n_grid-1), 1) +\
+        #-np.diag(np.ones(n_grid), 0)) * (a/h)
 
         D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx 
         
@@ -307,7 +324,7 @@ def create_prior_distribution(G_c, inference_type):
         # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
         # the square root of advection speed that results in a peclet number
         # of 1)
-        prior2 =Gaussian(0, 0.752**2)# Gaussian(0.5, 0.3**2)
+        prior2 =Gaussian(0, 0.5**2)# Gaussian(0.5, 0.3**2)
         prior = MyDistribution([prior1, prior2], geometry=G_c )
     return prior
 
@@ -728,10 +745,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
             axesLast[0].text(0.1, 0.55, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
 
         min_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
-                                            d=np.max(x_samples_funvals_mean[:-1])**2,
+                                            d=np.max(x_samples_funvals_mean[:-1]),
                                             L=L)
         max_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
-                                            d=np.min(x_samples_funvals_mean[:-1])**2,
+                                            d=np.min(x_samples_funvals_mean[:-1]),
                                             L=L)
 
         axesLast[0].text(0.1, 0.4, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
