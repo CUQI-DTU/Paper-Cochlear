@@ -8,6 +8,9 @@ from cuqi.sampler import MH, NUTS
 import matplotlib.pyplot as plt
 from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
+from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
+                                    NUTS as NUTSNew,
+                                    Conjugate as ConjugateNew)
 
 try:
     import dill as pickle
@@ -65,7 +68,7 @@ def parse_commandline_args(myargs):
                         default=arg_obj.version,
                         help='the version of the model to run')
     parser.add_argument('-sampler', metavar='sampler', type=str, choices=[
-                        'CWMH', 'MH', 'NUTS'],
+                        'CWMH', 'MH', 'NUTS', 'NUTSWithGibbs'],
                         default=arg_obj.sampler,
                         help='the sampler to use')
     parser.add_argument('-unknown_par_type',
@@ -449,6 +452,24 @@ def sample_the_posterior(sampler, posterior, G_c, args):
         my_sampler = NUTS(posterior, x0=x0, **NUTS_kwargs)
         posterior_samples = my_sampler.sample_adapt(Ns, Nb) 
         posterior_samples_burnthin = posterior_samples
+    elif sampler == 'NUTSWithGibbs':
+        sampling_strategy = {
+            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs),
+            "s" : ConjugateNew()
+        }
+        
+        # Here we do 1 internal steps with NUTS for each Gibbs step
+        num_sampling_steps = {
+            "x" : 1,
+            "s" : 1
+        }
+        
+        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps)
+        my_sampler.warmup(Nb)
+        my_sampler.sample(Ns)
+        posterior_samples = my_sampler.get_samples()
+        posterior_samples_burnthin = posterior_samples
+
     else:
         raise Exception('Unsuppported sampler')
     
@@ -470,7 +491,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    samples, experiment_par, locations, times, lapse_time):
+                    x_samples, s_samples, experiment_par, locations, times, lapse_time):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -515,7 +536,9 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  'exact_data_geometry': exact_data_geometry,
                  'exact_data_is_par': exact_data_is_par,
                  'data': data,
-                 'mean_recon_data': mean_recon_data, 'samples': samples,
+                 'mean_recon_data': mean_recon_data,
+                 'x_samples': x_samples,
+                 's_samples': s_samples,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
                  'lapse_time': lapse_time}
@@ -558,7 +581,7 @@ def read_experiment_data(dir_name, tag):
     return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
-                    samples, experiment_par, locations, times, lapsed_time=None, L=None):
+                    x_samples, s_samples, experiment_par, locations, times, lapsed_time=None, L=None):
     """Method to plot the numerical experiment results."""
     # Create tag
     tag = create_experiment_tag(experiment_par)
@@ -567,10 +590,16 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
         tag = tag[:80]+'\n'+tag[80:]
 
     # Expr type (const or var)
-    const_inf = True if samples.geometry.par_dim == 1 else False
+    const_inf = True if x_samples.geometry.par_dim == 1 else False
     const_true_x = True 
     if exact is not None:
         const_true_x = True if exact.geometry.par_dim == 1 else False
+    
+    # x_sample funval mean
+    x_samples_funvals_mean = x_samples.funvals.mean()
+
+    # s_sample mean
+    s_samples_mean = s_samples.mean()
 
     # Set up that depdneds on the whether inference is constant or variable
     # and whether true parameter is constant or variable:
@@ -610,9 +639,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
                          hspace=0.5, wspace=0.5))
     
     # last subfigure is empty and used to write text
-    axesLast = subfigs[3].subplots(1, 1, 
+    axesLast = subfigs[3].subplots(1, 2, 
         gridspec_kw=dict(left=0.1, right=0.9,
-                         bottom=0.1, top=0.9))
+                         bottom=0.15, top=0.9))
     
 
     # Add super title
@@ -647,17 +676,17 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
 
     # Plot credible intervals
     plt.sca(axsSecond[2, 1])
-    samples.funvals.plot_ci(exact = exact_for_plot)
+    x_samples.funvals.plot_ci(exact = exact_for_plot)
     # If inference type is not constant, plot data locations as vertical lines
     if not const_inf and experiment_par.inference_type != 'advection_diffusion':
         for loc in locations:
             plt.axvline(x = loc, color = 'gray', linestyle = '--')
     # TODO: print out the means only in advection diffusion case
-    plt.title('Posterior samples CI (mean advection= {:.2f})'.format(samples.funvals.mean()[-1]))
+    plt.title('Posterior samples CI (mean advection= {:.2f})'.format(x_samples_funvals_mean[-1]))
 
     # Plot ESS
     plt.sca(axsSecond[3, 0])
-    ESS_list = np.array(samples.compute_ess()) 
+    ESS_list = np.array(x_samples.compute_ess()) 
     plt.plot(ESS_list, marker=marker)
     plt.title('ESS (min = {:.2f})'.format(np.min(ESS_list)))
 
@@ -671,17 +700,17 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     axsFirst.legend(lines, legends, loc='center', ncol=3)
 
     # Plot trace
-    samples.plot_trace(trace_idx_list, axes=axesThird)
+    x_samples.plot_trace(trace_idx_list, axes=axesThird)
 
     # write lapse time, exact a , exact peclet number, and mean peclet number
     # in the last subfigure
-    axesLast.axis('off')
-    axesLast.text(0.1, 0.8, 'Lapse time: {:.2f} sec'.format(lapsed_time))
+    axesLast[0].axis('off')
+    axesLast[0].text(0.1, 0.8, 'Lapse time: {:.2f} sec'.format(lapsed_time))
     if experiment_par.true_a is not None:
         # print exact a
-        axesLast.text(0.1, 0.65, 'Exact a: {:.2f}'.format(experiment_par.true_a))
+        axesLast[0].text(0.1, 0.65, 'Exact a: {:.2f}'.format(experiment_par.true_a))
         # print inferred a
-        axesLast.text(0.1, 0.5, 'Inferred a: {:.2f}'.format(samples.funvals.mean()[-1]))
+        axesLast[0].text(0.1, 0.5, 'Inferred a: {:.2f}'.format(x_samples_funvals_mean[-1]))
     if experiment_par.inference_type == 'advection_diffusion':
         if exact is not None:
             min_exact_peclet = peclet_number(a=experiment_par.true_a,
@@ -690,16 +719,27 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
             max_exact_peclet = peclet_number(a=experiment_par.true_a,
                                          d=np.min(exact[:-1])**2,
                                          L=L)
-            axesLast.text(0.1, 0.35, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
+            axesLast[0].text(0.1, 0.55, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
 
-            min_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
-                                            d=np.max(exact[:-1])**2,
+        min_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
+                                            d=np.max(x_samples_funvals_mean[:-1])**2,
                                             L=L)
-            max_inferred_peclet = peclet_number(a=samples.funvals.mean()[-1],
-                                            d=np.min(exact[:-1])**2,
+        max_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
+                                            d=np.min(x_samples_funvals_mean[:-1])**2,
                                             L=L)
 
-            axesLast.text(0.1, 0.2, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
+        axesLast[0].text(0.1, 0.4, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
+    # if s samples is not None, print mean and std of std samples
+    if s_samples is not None:
+        std_samples = np.sqrt(1/s_samples.samples.flatten())
+        axesLast[0].text(0.1, 0.25, 'Mean of std samples: {:.2f}'.format(np.mean(std_samples)))
+        axesLast[0].text(0.1, 0.05, 'Std of std samples: {:.2f}'.format(np.std(std_samples)))
+
+    # plot the histogram of the std samples
+    if s_samples is not None:
+        plt.sca(axesLast[1])
+        plt.hist(std_samples, bins=20, color='blue', alpha=0.7)
+        plt.title('Histogram of std samples')
     return fig
 
 def process_experiment_par(experiment_par):

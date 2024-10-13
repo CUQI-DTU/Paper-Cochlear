@@ -26,7 +26,8 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     save_experiment_data,\
     Args,\
     build_grids,\
-    create_time_steps
+    create_time_steps,\
+    read_experiment_data
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -59,6 +60,8 @@ else:
 # Add arguments that are not passed from the command line
 args_predefined = Args()
 args.NUTS_kwargs = args_predefined.NUTS_kwargs
+if args.sampler == 'NUTSWithGibbs':
+    args.NUTS_kwargs["enable_FD"] = True
 
 # create a tag from the parameters of the experiment
 tag = create_experiment_tag(args)
@@ -86,7 +89,8 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-dir_name = 'results15/output'+tag
+parent_dir = 'results/'+args.version
+dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
 else:
@@ -169,14 +173,21 @@ if args.data_type == 'syntheticFromDiffusion':
 s_noise = set_the_noise_std(
     args.data_type, args.noise_level, exact_data,
     real_data, real_std_data, G_cont2D)
-y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
+
+if args.sampler == 'NUTSWithGibbs':
+    y = Gaussian(A(x), lambda s: 1/s, geometry=G_cont2D)
+else:
+    y = Gaussian(A(x), s_noise**2, geometry=G_cont2D)
 
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
 if args.data_type == 'syntheticFromDiffusion':
     y_temp = deepcopy(y)
     y_temp.mean = exact_data
-    data = y_temp.sample()
+    if args.sampler == 'NUTSWithGibbs':
+        data = y_temp(s=1/s_noise**2).sample()
+    else:
+        data = y_temp.sample()
 
 elif args.data_type == 'real':
     data = real_data
@@ -185,7 +196,11 @@ else:
 
 #%% STEP 15: Create the joint distribution
 #-----------------------------------------
-joint = JointDistribution(x, y)
+if args.sampler == 'NUTSWithGibbs':
+    s = cuqi.distribution.Gamma(1, 50000)
+    joint = JointDistribution(x, s, y)
+else:
+    joint = JointDistribution(x, y)
 
 #%% STEP 16: Create the posterior distribution
 #---------------------------------------------
@@ -202,8 +217,12 @@ samples = sample_the_posterior(
 lapsed_time = time.time() - start_time
 #%% STEP 18: Plot the results
 #----------------------------
+
+x_samples = samples["x"] if args.sampler == 'NUTSWithGibbs' else samples
+s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
+
 mean_recon_data = \
-    A(samples.funvals.mean(), is_par=False).reshape([len(locations), len(times)])
+    A(x_samples.funvals.mean(), is_par=False).reshape([len(locations), len(times)])
 
 # if exact_data is not defined, set it to None
 if exact_data is not None:
@@ -211,7 +230,8 @@ if exact_data is not None:
 fig = plot_experiment(exact_x, exact_data,
                 data.reshape([len(locations), len(times)]),
                 mean_recon_data,
-                samples,
+                x_samples,
+                s_samples,
                 args, locations, times, lapsed_time=lapsed_time, L=L)
 # Save figure
 fig.savefig(dir_name+'/experiment_'+tag+'.png')
@@ -222,5 +242,9 @@ save_experiment_data(dir_name, exact_x,
                      exact_data,
                      data.reshape([len(locations), len(times)]),
                      mean_recon_data,
-                     samples,
+                     x_samples,
+                     s_samples,
                      args, locations, times, lapsed_time)
+
+# test reading the data
+data_dic = read_experiment_data(parent_dir, tag)
