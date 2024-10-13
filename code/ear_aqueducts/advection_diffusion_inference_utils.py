@@ -442,6 +442,12 @@ def sample_the_posterior(sampler, posterior, G_c, args):
     x0 = np.zeros(G_c.par_dim) + 20
     x0 = x0[0] if len(x0) == 1 else x0 # convert to float
 
+    # if the parameters contains advection speed, set the initial
+    # value of the advection speed to 0
+    if (args.inference_type == 'advection_diffusion' and
+        isinstance(x0, np.ndarray)):
+        x0[-1] = 0
+
     if sampler == 'MH':
         my_sampler = MH(posterior, scale=10, x0=x0)
         posterior_samples = my_sampler.sample_adapt(Ns)
