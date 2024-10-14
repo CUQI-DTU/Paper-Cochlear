@@ -224,10 +224,15 @@ def create_domain_geometry(grid, inference_type):
 
 def create_PDE_form(real_bc_l, real_bc_r,
                     grid, grid_c, grid_c_fine, n_grid, h,
-                    times, inference_type):
+                    times, inference_type, u0=None):
     """Function to create PDE form. """
     ## Initial condition
-    initial_condition = np.zeros(n_grid)
+    if u0 is None:
+        u0 = np.zeros(n_grid)
+        u0[0] = real_bc_l[0]
+        if real_bc_r is not None:
+            u0[-1] = real_bc_r[0]
+    initial_condition = u0
 
     if inference_type == 'constant':
         ## Source term (constant diffusion coefficient case)
@@ -274,9 +279,11 @@ def create_PDE_form(real_bc_l, real_bc_r,
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc_l)
+            u_0_mplus1 = np.interp(tau_current, times, real_bc_l) 
+            f_array[0] += u_0_mplus1*c[0]/h**2 + c[-1]*u_0_mplus1/(2*h)
             if real_bc_r is not None:
-                f_array[-1] = c[-1]/h**2*np.interp(tau_current, times, real_bc_r)
+                u_L_m = np.interp(tau_current, times, real_bc_r)
+                f_array[-1] += c[-2]/h**2*u_L_m - c[-1]*u_L_m/(2*h)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -287,18 +294,15 @@ def create_PDE_form(real_bc_l, real_bc_r,
         Dx /= h # FD derivative matrix
  
         def DA_a(a):
-            if a > 0:
-                # use upwind scheme
-                return (np.diag(np.ones(n_grid-1), 1) +\
-            -np.diag(np.ones(n_grid), 0)) * (a/h)
-            else:
-                # use downwind scheme
-                return (np.diag(np.ones(n_grid), 0) +\
-            -np.diag(np.ones(n_grid-1), -1)) * (a/h)
-        #DA_a = lambda a: (np.diag(np.ones(n_grid-1), 1) +\
-        #-np.diag(np.ones(n_grid), 0)) * (a/h)
+            if True:
+                # centered difference
+                DA =  (np.diag(np.ones(n_grid-1), 1) +\
+            -np.diag(np.ones(n_grid-1), -1)) * (a/(2*h))
+                return DA
 
-        D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx 
+        def D_c_var(c):
+            Mat = - Dx.T @ np.diag(c) @ Dx 
+            return Mat
         
         ## PDE form (varying in space diffusion coefficient case)
         def PDE_form(x, tau_current):
