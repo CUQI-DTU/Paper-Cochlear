@@ -328,7 +328,9 @@ def create_prior_distribution(G_c, inference_type):
         # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
         # the square root of advection speed that results in a peclet number
         # of 1)
-        prior2 =Gaussian(0, 0.5**2)# Gaussian(0.5, 0.3**2)
+        var_a_sqrt = 0.752**2
+        var_a = 2*var_a_sqrt**2
+        prior2 =Gaussian(0, var_a)# Gaussian(0.5, 0.3**2)
         prior = MyDistribution([prior1, prior2], geometry=G_c )
     return prior
 
