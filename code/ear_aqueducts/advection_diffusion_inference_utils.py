@@ -628,7 +628,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     x_samples_funvals_mean = x_samples.funvals.mean()
 
     # s_sample mean
-    s_samples_mean = s_samples.mean()
+    if s_samples is not None:
+        s_samples_mean = s_samples.mean()
+    else:
+        s_samples_mean = np.nan
 
     # Set up that depdneds on the whether inference is constant or variable
     # and whether true parameter is constant or variable:
