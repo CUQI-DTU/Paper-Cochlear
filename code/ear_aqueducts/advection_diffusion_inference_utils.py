@@ -502,7 +502,7 @@ def sample_the_posterior(sampler, posterior, G_c, args):
     else:
         raise Exception('Unsuppported sampler')
     
-    return posterior_samples_burnthin
+    return posterior_samples_burnthin, my_sampler
 
 def plot_time_series(times, locations, data, plot_legend=True):
     # Plot data
