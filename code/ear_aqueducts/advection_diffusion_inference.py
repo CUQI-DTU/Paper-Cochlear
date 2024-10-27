@@ -56,6 +56,7 @@ if len(sys.argv) <= 2:
     args.rbc = 'fromData'
     args.NUTS_kwargs['max_depth'] = 5
     args.version = 'results_temp'
+    args.adaptive = True
 
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -116,7 +117,7 @@ grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_
 tau_max = 30*60 # Final time in sec
 cfl = 5 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
-tau = create_time_steps(h, cfl, tau_max)
+tau = create_time_steps(h, cfl, tau_max, args.adaptive)
 
 #%% STEP 6: Create the domain geometry
 #-------------------------------------
