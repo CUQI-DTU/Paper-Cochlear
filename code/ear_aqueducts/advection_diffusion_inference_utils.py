@@ -43,6 +43,7 @@ class Args:
         self.NUTS_kwargs = {'max_depth': 10}
         self.true_a = None
         self.rbc = "zero"
+        self.adaptive = True
 
 def all_animals():
     """Function to return all animals. """
@@ -128,6 +129,10 @@ def parse_commandline_args(myargs):
     parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
+    parser.add_argument('-adaptive', metavar='adaptive', type=bool,
+                        default=arg_obj.adaptive,
+                        help='static adaptive time step size, fine at the beginning'+\
+                        'and coarse at the end, default is True')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -196,11 +201,16 @@ def build_grids(L, coarsening_factor, n_grid_c):
     assert np.isclose(grid_c[-1], L)
     return grid, grid_c, grid_c_fine, h, n_grid
 
-def create_time_steps(h, cfl, tau_max):
+def create_time_steps(h, cfl, tau_max, adaptive):
     """Function to create time steps array. """
     dt_approx = cfl*h**2 # Defining approximate time step size
     n_tau = int(tau_max/dt_approx)+1 # Number of time steps
     tau = np.linspace(0, tau_max, n_tau)
+    if adaptive:
+        # insert 4 time steps between the first two time steps
+        additional_timesteps = np.array(
+            [tau[0]+(tau[1]-tau[0])*frac for frac in [0.2, 0.4, 0.6, 0.8]])
+        tau = np.concatenate((tau[:1], additional_timesteps, tau[1:]))
     return tau
 
 def create_domain_geometry(grid, inference_type):
