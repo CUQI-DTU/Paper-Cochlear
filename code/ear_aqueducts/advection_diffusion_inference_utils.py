@@ -175,6 +175,7 @@ def read_data_files(args):
         # locations distance microns where 20210120_omnip10um_KX_M1_nosound_L is in
         # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
         real_locations = dist_file['distance'].values
+        real_locations = real_locations[:args.num_CA+args.num_ST]
         ST_list = ['ST'+str(i+1) for i in range(args.num_ST)]
         CA_ST_list = CA_list + ST_list
     
