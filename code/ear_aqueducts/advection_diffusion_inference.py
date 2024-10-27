@@ -50,12 +50,12 @@ if len(sys.argv) <= 2:
     args.sampler = 'NUTSWithGibbs'
     args.Ns = 5
     args.Nb = 1
-    args.num_ST = 0
+    args.num_ST = 1
     args.noise_level = 0.1
     args.true_a = 0.8 # funval
     args.rbc = 'fromData'
     args.NUTS_kwargs['max_depth'] = 5
-    args.version = 'results_temp'
+    args.version = 'results_temp_rhs'
     args.adaptive = True
 
 else:
