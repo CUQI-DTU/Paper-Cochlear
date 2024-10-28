@@ -14,7 +14,16 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "v14septCARealDiff"
 #version = "v14septCASTSynthDiff"
 #version = "v14septCASTRealDiff"
-version = "v13octCARealDiffGibbs"
+#version = "v13octCARealDiffGibbs"
+
+
+#version = "paperV2CASynthDiff"
+version = "paperV2CARealDiff"  
+#version = "paperV2CASTSynthDiff"
+#version = "paperV2CASTRealDiff"
+#version = "paperV2CASynthAdvDiff"
+#version = "paperV2CARealAdvDiff"
+
 #Ns_s = [1000]
 #Nb_s = [10]
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
@@ -361,6 +370,73 @@ if version == "v13octCARealDiffGibbs":
     inference_type = ['heterogeneous']
     true_a = [0.1] # funval (value not used)
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
+
+
+
+if version == "paperV2CASynthDiff":
+    raise ValueError("This version is not supported yet")
+
+
+if version == "paperV2CARealDiff":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [10] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromData']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+
+if version == "paperV2CASTSynthDiff":
+    raise ValueError("This version is not supported yet")
+
+if version == "paperV2CASTRealDiff":
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [4]
+    sampler = ['NUTSWithGibbs']
+    Ns = [10]
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromData']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+
+if version == "paperV2CASynthAdvDiff":
+    raise ValueError("This version is not supported yet")
+
+if version == "paperV2CARealAdvDiff":
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [10] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type =['advection_diffusion']
+    rbc = ['fromData']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here 
+
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"

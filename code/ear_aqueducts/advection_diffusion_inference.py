@@ -43,23 +43,28 @@ np.random.seed(1)
 # If no arguments are passed, use the default values
 if len(sys.argv) <= 2:
     args = Args()
-    args.data_type = 'syntheticFromDiffusion'
+    args.data_type = 'real'
     args.inference_type = 'advection_diffusion'
     args.unknown_par_type = 'custom_1'
     #args.unknown_par_value = [100.0]
-    args.sampler = 'MH'
-    args.Ns = 20
-    args.Nb = 10
-    args.num_ST = 0
+    args.sampler = 'NUTSWithGibbs'
+    args.Ns = 5
+    args.Nb = 1
+    args.num_ST = 1
     args.noise_level = 0.1
     args.true_a = 0.8 # funval
     args.rbc = 'fromData'
+    args.NUTS_kwargs['max_depth'] = 5
+    args.version = 'results_temp_rhs'
+    args.adaptive = True
+
 else:
     args = parse_commandline_args(sys.argv[1:])
+    # Add arguments that are not passed from the command line
+    args_predefined = Args()
+    args.NUTS_kwargs = args_predefined.NUTS_kwargs
 
-# Add arguments that are not passed from the command line
-args_predefined = Args()
-args.NUTS_kwargs = args_predefined.NUTS_kwargs
+
 if args.sampler == 'NUTSWithGibbs':
     args.NUTS_kwargs["enable_FD"] = True
 
@@ -112,7 +117,7 @@ grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_
 tau_max = 30*60 # Final time in sec
 cfl = 5 # The cfl condition to have a stable solution
          # the method is implicit, we can choose relatively large time steps 
-tau = create_time_steps(h, cfl, tau_max)
+tau = create_time_steps(h, cfl, tau_max, args.adaptive)
 
 #%% STEP 6: Create the domain geometry
 #-------------------------------------
@@ -211,7 +216,7 @@ posterior = joint(y=data) # condition on y=y_obs
 # time the sampling
 import time
 start_time = time.time()
-samples = sample_the_posterior(
+samples, my_sampler = sample_the_posterior(
     args.sampler, posterior, G_c, args)
 
 lapsed_time = time.time() - start_time

@@ -43,6 +43,7 @@ class Args:
         self.NUTS_kwargs = {'max_depth': 10}
         self.true_a = None
         self.rbc = "zero"
+        self.adaptive = True
 
 def all_animals():
     """Function to return all animals. """
@@ -128,6 +129,10 @@ def parse_commandline_args(myargs):
     parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
+    parser.add_argument('-adaptive', metavar='adaptive', type=bool,
+                        default=arg_obj.adaptive,
+                        help='static adaptive time step size, fine at the beginning'+\
+                        'and coarse at the end, default is True')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -170,6 +175,7 @@ def read_data_files(args):
         # locations distance microns where 20210120_omnip10um_KX_M1_nosound_L is in
         # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
         real_locations = dist_file['distance'].values
+        real_locations = real_locations[:args.num_CA+args.num_ST]
         ST_list = ['ST'+str(i+1) for i in range(args.num_ST)]
         CA_ST_list = CA_list + ST_list
     
@@ -196,11 +202,16 @@ def build_grids(L, coarsening_factor, n_grid_c):
     assert np.isclose(grid_c[-1], L)
     return grid, grid_c, grid_c_fine, h, n_grid
 
-def create_time_steps(h, cfl, tau_max):
+def create_time_steps(h, cfl, tau_max, adaptive):
     """Function to create time steps array. """
     dt_approx = cfl*h**2 # Defining approximate time step size
     n_tau = int(tau_max/dt_approx)+1 # Number of time steps
     tau = np.linspace(0, tau_max, n_tau)
+    if adaptive:
+        # insert 4 time steps between the first two time steps
+        additional_timesteps = np.array(
+            [tau[0]+(tau[1]-tau[0])*frac for frac in [0.2, 0.4, 0.6, 0.8]])
+        tau = np.concatenate((tau[:1], additional_timesteps, tau[1:]))
     return tau
 
 def create_domain_geometry(grid, inference_type):
@@ -211,15 +222,28 @@ def create_domain_geometry(grid, inference_type):
     elif inference_type == 'heterogeneous':
         geometry = MappedGeometry( Continuous1D(grid),  map=_map)
     elif inference_type == 'advection_diffusion':
-        geometry = MappedGeometry( Discrete(len(grid)+1),  map=_map)
+        # advection diffusion map is x^2 except for the last element which is x
+        def _map_advection_diffusion(x):
+            output = np.zeros_like(x)
+            output[:-1] = x[:-1]**2
+            output[-1] = x[-1]
+            x = output
+            return x
+        geometry = MappedGeometry( Discrete(len(grid)+1),
+                                  map=_map_advection_diffusion)
     return geometry
 
 def create_PDE_form(real_bc_l, real_bc_r,
                     grid, grid_c, grid_c_fine, n_grid, h,
-                    times, inference_type):
+                    times, inference_type, u0=None):
     """Function to create PDE form. """
     ## Initial condition
-    initial_condition = np.zeros(n_grid)
+    if u0 is None:
+        u0 = np.zeros(n_grid)
+        u0[0] = real_bc_l[0]
+        if real_bc_r is not None:
+            u0[-1] = real_bc_r[0]
+    initial_condition = u0
 
     if inference_type == 'constant':
         ## Source term (constant diffusion coefficient case)
@@ -266,9 +290,11 @@ def create_PDE_form(real_bc_l, real_bc_r,
         ## Source term (varying in space diffusion coefficient case)
         def g_var(c, tau_current):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc_l)
+            u_0_mplus1 = np.interp(tau_current, times, real_bc_l) 
+            f_array[0] += u_0_mplus1*c[0]/h**2 + c[-1]*u_0_mplus1/(2*h)
             if real_bc_r is not None:
-                f_array[-1] = c[-1]/h**2*np.interp(tau_current, times, real_bc_r)
+                u_L_m = np.interp(tau_current, times, real_bc_r)
+                f_array[-1] += c[-2]/h**2*u_L_m - c[-1]*u_L_m/(2*h)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -277,11 +303,17 @@ def create_PDE_form(real_bc_l, real_bc_r,
         vec[0] = 1
         Dx = np.concatenate([vec.reshape([1, -1]), Dx], axis=0)
         Dx /= h # FD derivative matrix
+ 
+        def DA_a(a):
+            if True:
+                # centered difference
+                DA =  (np.diag(np.ones(n_grid-1), 1) +\
+            -np.diag(np.ones(n_grid-1), -1)) * (a/(2*h))
+                return DA
 
-        DA_a = lambda a: (np.diag(np.ones(n_grid-1), 1) +\
-        -np.diag(np.ones(n_grid), 0)) * (a/h)
-
-        D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx 
+        def D_c_var(c):
+            Mat = - Dx.T @ np.diag(c) @ Dx 
+            return Mat
         
         ## PDE form (varying in space diffusion coefficient case)
         def PDE_form(x, tau_current):
@@ -307,7 +339,9 @@ def create_prior_distribution(G_c, inference_type):
         # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
         # the square root of advection speed that results in a peclet number
         # of 1)
-        prior2 =Gaussian(0, 0.752**2)# Gaussian(0.5, 0.3**2)
+        var_a_sqrt = 0.752**2
+        var_a = 2*var_a_sqrt**2
+        prior2 =Gaussian(0, var_a)# Gaussian(0.5, 0.3**2)
         prior = MyDistribution([prior1, prior2], geometry=G_c )
     return prior
 
@@ -442,6 +476,12 @@ def sample_the_posterior(sampler, posterior, G_c, args):
     x0 = np.zeros(G_c.par_dim) + 20
     x0 = x0[0] if len(x0) == 1 else x0 # convert to float
 
+    # if the parameters contains advection speed, set the initial
+    # value of the advection speed to 0
+    if (args.inference_type == 'advection_diffusion' and
+        isinstance(x0, np.ndarray)):
+        x0[-1] = 0
+
     if sampler == 'MH':
         my_sampler = MH(posterior, scale=10, x0=x0)
         posterior_samples = my_sampler.sample_adapt(Ns)
@@ -473,7 +513,7 @@ def sample_the_posterior(sampler, posterior, G_c, args):
     else:
         raise Exception('Unsuppported sampler')
     
-    return posterior_samples_burnthin
+    return posterior_samples_burnthin, my_sampler
 
 def plot_time_series(times, locations, data, plot_legend=True):
     # Plot data
@@ -599,7 +639,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     x_samples_funvals_mean = x_samples.funvals.mean()
 
     # s_sample mean
-    s_samples_mean = s_samples.mean()
+    if s_samples is not None:
+        s_samples_mean = s_samples.mean()
+    else:
+        s_samples_mean = np.nan
 
     # Set up that depdneds on the whether inference is constant or variable
     # and whether true parameter is constant or variable:
@@ -722,10 +765,10 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
             axesLast[0].text(0.1, 0.55, 'Exact peclet number range: [{:.2f}, {:.2f}]'.format(min_exact_peclet, max_exact_peclet))
 
         min_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
-                                            d=np.max(x_samples_funvals_mean[:-1])**2,
+                                            d=np.max(x_samples_funvals_mean[:-1]),
                                             L=L)
         max_inferred_peclet = peclet_number(a=x_samples_funvals_mean[-1],
-                                            d=np.min(x_samples_funvals_mean[:-1])**2,
+                                            d=np.min(x_samples_funvals_mean[:-1]),
                                             L=L)
 
         axesLast[0].text(0.1, 0.4, 'Inferred peclet number range: [{:.2f}, {:.2f}]'.format(min_inferred_peclet, max_inferred_peclet))
