@@ -7,16 +7,18 @@ def parse_combine_CA_ST_distances(distancefile):
     # The first column has varying names, so we reset here to ROI.
     df = df.rename(columns={df.columns[0]: "ROI"})
     
-
     CA_ST_mask = ["CA" in ROIname or "ST" in ROIname for ROIname in df.iloc[:, 0]]
     df = df.loc[CA_ST_mask, :]
 
-    CA5_loc = df.loc[df.iloc[:, 0] == "CA5", ["x microns", "y microns", "z microns"]].values[0]
-    ST1_loc = df.loc[df.iloc[:, 0] == "ST1", ["x microns", "y microns", "z microns"]].values[0]
+    CA5_distance = df.loc[df.iloc[:, 0] == "CA5", ["distance microns"]].values[0, 0]
+    CA5_loc = df.loc[df.iloc[:, 0] == "CA5", ["x microns", "y microns", "z microns"]].values[0, :]
+    ST1_loc = df.loc[df.iloc[:, 0] == "ST1", ["x microns", "y microns", "z microns"]].values[0, :]
     CA5_to_ST1_dist = euclid_distance(CA5_loc, ST1_loc)
-
+    
+    # The ST distance is zero before we combine, so we add both the distance from proximal
+    # cochlear aqueduct and the distance between distal aqueduct and the first ST.
     df = df.sort_values("ROI", ascending=True)
-    df.loc[5:, "distance microns"] += CA5_to_ST1_dist
+    df.loc[5:, "distance microns"] += CA5_to_ST1_dist + CA5_distance
     
     return df.loc[:, ["ROI", "distance microns"]]
 
