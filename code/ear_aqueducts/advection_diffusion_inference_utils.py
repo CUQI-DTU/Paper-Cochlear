@@ -1,4 +1,5 @@
 import argparse
+import json
 import pandas as pd
 import numpy as np
 from cuqi.geometry import MappedGeometry, Discrete, Continuous1D
@@ -11,6 +12,7 @@ from scipy.interpolate import interp1d
 from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     NUTS as NUTSNew,
                                     Conjugate as ConjugateNew)
+import cuqi
 
 try:
     import dill as pickle
@@ -133,6 +135,9 @@ def parse_commandline_args(myargs):
                         default=arg_obj.adaptive,
                         help='static adaptive time step size, fine at the beginning'+\
                         'and coarse at the end, default is True')
+    parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
+                        default=arg_obj.NUTS_kwargs,
+                        help='kwargs for NUTS sampler')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -531,7 +536,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapse_time):
+                    x_samples, s_samples, experiment_par, locations, times, lapse_time, sampler):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -581,7 +586,17 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  's_samples': s_samples,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
-                 'lapse_time': lapse_time}
+                 'lapse_time': lapse_time,
+                 'num_tree_node_list': None}
+    # if sampler is NUTs, save the number of tree nodes
+    if isinstance(sampler, cuqi.experimental.mcmc.NUTS):
+        data_dict['num_tree_node_list'] = sampler.num_tree_node_list
+    
+    # if sampler is HybridGibbs, save the number of tree nodes if the
+    # underlying sampler is NUTS
+    elif isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
+        if isinstance(sampler.samplers['x'], cuqi.experimental.mcmc.NUTS):
+            data_dict['num_tree_node_list'] = sampler.samplers['x'].num_tree_node_list
 
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
@@ -793,6 +808,10 @@ def process_experiment_par(experiment_par):
     
     if len(experiment_par.unknown_par_value) not in [1, 2]:
         raise Exception('Unknown parameter value not supported')
+    
+    # use json to convert NUTS_kwargs to dictionary
+    if experiment_par.NUTS_kwargs is not None:
+        experiment_par.NUTS_kwargs = json.loads(experiment_par.NUTS_kwargs)
     
     # Raise exception if more than one data point is added, unable to
     # create tag
