@@ -61,8 +61,8 @@ if len(sys.argv) <= 2:
 else:
     args = parse_commandline_args(sys.argv[1:])
     # Add arguments that are not passed from the command line
-    args_predefined = Args()
-    args.NUTS_kwargs = args_predefined.NUTS_kwargs
+    #args_predefined = Args()
+    #args.NUTS_kwargs = args_predefined.NUTS_kwargs
 
 
 if args.sampler == 'NUTSWithGibbs':
@@ -249,7 +249,8 @@ save_experiment_data(dir_name, exact_x,
                      mean_recon_data,
                      x_samples,
                      s_samples,
-                     args, locations, times, lapsed_time)
+                     args, locations, times, lapsed_time,
+                     sampler=my_sampler)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)
