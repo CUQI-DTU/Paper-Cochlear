@@ -395,6 +395,7 @@ if version == "paperV2CARealDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
 
 if version == "paperV2CASTSynthDiff":
     raise ValueError("This version is not supported yet")
@@ -415,6 +416,7 @@ if version == "paperV2CASTRealDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
 
 if version == "paperV2CASynthAdvDiff":
     raise ValueError("This version is not supported yet")
@@ -436,11 +438,12 @@ if version == "paperV2CARealAdvDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here 
+    NUTS_kwargs = {"max_depth":7}
 
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs)
 print("length of arg_list: ", len(arg_list))
 for args in arg_list:
     cmd = create_command(main_command, args)
