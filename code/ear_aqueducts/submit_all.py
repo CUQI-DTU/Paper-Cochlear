@@ -386,7 +386,7 @@ if version == "paperV2CARealDiff":
     num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [200] # try 10000000 for MH
+    Ns = [5000] # try 10000000 for MH
     Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
@@ -407,7 +407,7 @@ if version == "paperV2CASTRealDiff":
     ears = all_ears()
     num_ST_list = [4]
     sampler = ['NUTSWithGibbs']
-    Ns = [200]
+    Ns = [5000]
     Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
@@ -429,8 +429,8 @@ if version == "paperV2CARealAdvDiff":
     num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [200] # try 10000000 for MH
-    Nb = [20]
+    Ns = [5000] # try 10000000 for MH
+    Nb = [0]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type =['advection_diffusion']
@@ -438,7 +438,7 @@ if version == "paperV2CARealAdvDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here 
-    NUTS_kwargs = {"max_depth":7}
+    NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
 
 # Main command to run the job
