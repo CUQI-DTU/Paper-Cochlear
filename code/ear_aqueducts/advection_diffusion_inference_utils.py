@@ -587,16 +587,19 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
                  'lapse_time': lapse_time,
-                 'num_tree_node_list': None}
+                 'num_tree_node_list': None,
+                 'epsilon_list': None}
     # if sampler is NUTs, save the number of tree nodes
     if isinstance(sampler, cuqi.experimental.mcmc.NUTS):
         data_dict['num_tree_node_list'] = sampler.num_tree_node_list
+        data_dict['epsilon_list'] = sampler.epsilon_list
     
     # if sampler is HybridGibbs, save the number of tree nodes if the
     # underlying sampler is NUTS
     elif isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
         if isinstance(sampler.samplers['x'], cuqi.experimental.mcmc.NUTS):
             data_dict['num_tree_node_list'] = sampler.samplers['x'].num_tree_node_list
+            data_dict['epsilon_list'] = sampler.samplers['x'].epsilon_list
 
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
