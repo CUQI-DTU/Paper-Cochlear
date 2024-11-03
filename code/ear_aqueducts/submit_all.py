@@ -383,11 +383,11 @@ if version == "paperV2CARealDiff":
     animals = all_animals()
     # Array of all ears
     ears = all_ears()
-    num_ST_list = [0]
+    num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [10] # try 10000000 for MH
-    Nb = [1]
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
@@ -406,8 +406,8 @@ if version == "paperV2CASTRealDiff":
     ears = all_ears()
     num_ST_list = [4]
     sampler = ['NUTSWithGibbs']
-    Ns = [10]
-    Nb = [1]
+    Ns = [200]
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
@@ -424,11 +424,11 @@ if version == "paperV2CARealAdvDiff":
     animals = all_animals()
     # Array of all ears
     ears = all_ears()
-    num_ST_list = [0]
+    num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [10] # try 10000000 for MH
-    Nb = [1]
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type =['advection_diffusion']
