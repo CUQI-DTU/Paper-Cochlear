@@ -795,7 +795,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
         std_samples = np.sqrt(1/s_samples.samples.flatten())
         axesLast[0].text(0.1, 0.25, 'Mean of std samples: {:.2f}'.format(np.mean(std_samples)))
         axesLast[0].text(0.1, 0.05, 'Std of std samples: {:.2f}'.format(np.std(std_samples)))
-
+    # print NUTS kwargs
+    if experiment_par.NUTS_kwargs is not None:
+        axesLast[0].text(0.1, -0.1, 'NUTS kwargs: {}'.format(experiment_par.NUTS_kwargs))
     # plot the histogram of the std samples
     if s_samples is not None:
         plt.sca(axesLast[1])
