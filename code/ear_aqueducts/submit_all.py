@@ -23,8 +23,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "paperV2CASTRealDiff"
 #version = "paperV2CASynthAdvDiff"
 #version = "paperV2CARealAdvDiff"
-version = "paperV2CARealDiff_CArbc"
-#version = "paperV2CARealAdvDiff_CArbc"
+#version = "paperV2CARealDiff_CArbc_clip"
+version = "paperV2CARealAdvDiff_CArbc_clip"
 
 #Ns_s = [1000]
 #Nb_s = [10]
@@ -443,7 +443,7 @@ if version == "paperV2CARealAdvDiff":
     NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
 
-if version == "paperV2CARealDiff_CArbc":
+if version == "paperV2CARealDiff_CArbc_clip":
 
     # Array of all animals
     animals = all_animals()
@@ -457,13 +457,13 @@ if version == "paperV2CARealDiff_CArbc":
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
-    rbc = ['fromData']
+    rbc = ['fromDataClip']
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
     NUTS_kwargs = {"max_depth":7}
 
-if version == "paperV2CARealAdvDiff_CArbc":
+if version == "paperV2CARealAdvDiff_CArbc_clip":
     # Array of all animals
     animals = all_animals()
     # Array of all ears
@@ -476,7 +476,7 @@ if version == "paperV2CARealAdvDiff_CArbc":
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type =['advection_diffusion']
-    rbc = ['fromData']
+    rbc = ['fromDataClip']
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here 
