@@ -23,6 +23,8 @@ version = "paperV2CARealDiff"
 #version = "paperV2CASTRealDiff"
 #version = "paperV2CASynthAdvDiff"
 #version = "paperV2CARealAdvDiff"
+version = "paperV2CARealDiff_CArbc"
+version = "paperV2CARealAdvDiff_CArbc"
 
 #Ns_s = [1000]
 #Nb_s = [10]
@@ -440,6 +442,45 @@ if version == "paperV2CARealAdvDiff":
     noise_levels = ["fromDataAvg"] # this noise level will not be used here 
     NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
+
+if version == "paperV2CARealDiff_CArbc":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [5000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromData']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
+
+if version == "paperV2CARealAdvDiff_CArbc":
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [5000] # try 10000000 for MH
+    Nb = [0]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type =['advection_diffusion']
+    rbc = ['fromData']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here 
+    NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
