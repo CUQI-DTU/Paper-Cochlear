@@ -81,6 +81,10 @@ real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 # The right boundary condition is given by the data (if rbc is not "zero")
 if args.rbc == 'fromData':
     real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+elif args.rbc == 'fromDataClip':
+    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    real_bc_r[real_bc_r<0] = 0
+
 else:
     real_bc_r = None
 

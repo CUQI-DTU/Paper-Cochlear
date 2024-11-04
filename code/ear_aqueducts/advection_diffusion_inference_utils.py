@@ -128,7 +128,7 @@ def parse_commandline_args(myargs):
     parser.add_argument('-true_a', metavar='true_a', type=float, 
                         default=arg_obj.true_a,
                         help='true advection speed')
-    parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData'],
+    parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData', 'fromDataClip'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
     parser.add_argument('-adaptive', metavar='adaptive', type=bool,
