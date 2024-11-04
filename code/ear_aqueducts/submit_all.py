@@ -18,13 +18,13 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 
 
 #version = "paperV2CASynthDiff"
-version = "paperV2CARealDiff"  
+#version = "paperV2CARealDiff"  
 #version = "paperV2CASTSynthDiff"
 #version = "paperV2CASTRealDiff"
 #version = "paperV2CASynthAdvDiff"
 #version = "paperV2CARealAdvDiff"
 version = "paperV2CARealDiff_CArbc"
-version = "paperV2CARealAdvDiff_CArbc"
+#version = "paperV2CARealAdvDiff_CArbc"
 
 #Ns_s = [1000]
 #Nb_s = [10]
