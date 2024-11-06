@@ -223,7 +223,7 @@ else:
 #-----------------------------------------
 if args.sampler == 'NUTSWithGibbs':
     if args.data_grad:
-        s = cuqi.distribution.Gamma(1.2, 100)
+        s = cuqi.distribution.Gamma(1.2, 5)
     else:
         s = cuqi.distribution.Gamma(1, 50000)
     joint = JointDistribution(x, s, y)
@@ -258,7 +258,7 @@ s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
 
 mean_recon_data = \
     A(x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
-
+non_grad_mean_recon_data = A.pde._solution_obs
 # if exact_data is not defined, set it to None
 if exact_data is not None:
     exact_data = exact_data.reshape(G_cont2D.fun_shape)
@@ -269,7 +269,14 @@ fig = plot_experiment(exact_x, exact_data,
                 s_samples,
                 args, 
                 diff_locations if args.data_grad else locations,
-                times, lapsed_time=lapsed_time, L=L)
+                times, 
+                non_grad_data=real_data.reshape((len(locations), len(real_times))),
+                non_grad_mean_recon_data=non_grad_mean_recon_data.reshape((len(locations), len(real_times))),
+                non_grad_locations=locations,
+                lapsed_time=lapsed_time, L=L)
+
+
+
 # Save figure
 fig.savefig(dir_name+'/experiment_'+tag+'.png')
 
