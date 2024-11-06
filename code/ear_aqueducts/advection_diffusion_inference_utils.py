@@ -663,7 +663,11 @@ def read_experiment_data(dir_name, tag):
     return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapsed_time=None, L=None):
+                    x_samples, s_samples, experiment_par, locations, times,
+                    non_grad_data=None,
+                    non_grad_mean_recon_data=None,
+                    non_grad_locations=None,
+                    lapsed_time=None, L=None):
     """Method to plot the numerical experiment results."""
     # Create tag
     tag = create_experiment_tag(experiment_par)
@@ -707,11 +711,11 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     marker = 'o' if const_true_x else ''
 
     # Create figure: 
-    fig = plt.figure(figsize=(12, 18), layout='constrained')
+    fig = plt.figure(figsize=(12, 20), layout='constrained')
 
     subfigs = fig.subfigures(4, 1, height_ratios=height_ratios)
 
-    axsSecond = subfigs[1].subplots(4, 2,
+    axsSecond = subfigs[1].subplots(5, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
                          bottom=0.1, top=0.95,
                          hspace=0.64, wspace=0.5))
@@ -783,6 +787,17 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     # plot legend 
     axsFirst.axis('off')
     axsFirst.legend(lines, legends, loc='center', ncol=3)
+    
+    # plot data (not grad)
+    plt.sca(axsSecond[4, 0])
+    plot_time_series(times, non_grad_locations, non_grad_data, plot_legend=False)
+    plt.title('Noisy data (not grad)')
+
+    # plot mean reconstructed data (not grad)
+    plt.sca(axsSecond[4, 1])
+    plot_time_series(times, non_grad_locations, non_grad_mean_recon_data, plot_legend=False)
+    plt.title('Mean reconstructed data (not grad)')
+
 
     # Plot trace
     x_samples.plot_trace(trace_idx_list, axes=axesThird)
