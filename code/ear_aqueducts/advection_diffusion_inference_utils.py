@@ -46,6 +46,7 @@ class Args:
         self.true_a = None
         self.rbc = "zero"
         self.adaptive = True
+        self.data_grad = False
 
 def all_animals():
     """Function to return all animals. """
@@ -138,7 +139,11 @@ def parse_commandline_args(myargs):
     parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
                         default=arg_obj.NUTS_kwargs,
                         help='kwargs for NUTS sampler')
-    
+    parser.add_argument('-data_grad', metavar='data_grad', type=bool,
+                        default=arg_obj.data_grad,
+                        help='data_grad is set to True if we want to use the '+\
+                             'gradient of the data to be used in the likelihood'+\
+                             'function instead of the data itself')
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
     
@@ -166,11 +171,11 @@ def read_data_files(args):
         ## Read concentration file and times
         constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        real_data = constr_file[CA_list].values.T.ravel()
+        real_data = constr_file[CA_list].values.T
 
         ## Read std data
         CA_std_list = [item+' std' for item in CA_list]
-        real_std_data = constr_file[CA_std_list].values.T.ravel()
+        real_std_data = constr_file[CA_std_list].values.T
   
     elif args.num_ST > 0: # CA and ST data
         print('CA and ST data.')
@@ -187,13 +192,32 @@ def read_data_files(args):
         ## Read concentration file and times
         constr_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        real_data = constr_file[CA_ST_list].values.T.ravel()
+        real_data = constr_file[CA_ST_list].values.T
         ## Read std data
         std_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
         CA_ST_std_list = [item+' std' for item in CA_ST_list]
-        real_std_data = std_file[CA_ST_std_list].values.T.ravel()
+        real_std_data = std_file[CA_ST_std_list].values.T
+    if args.data_grad:
+        print('real_data shape: ', real_data.shape)
+        print('real data:\n'   , real_data)
+        real_data_diff = np.zeros((real_data.shape[0]-1, real_data.shape[1]))
 
-    return real_times, real_locations, real_data, real_std_data
+        for i in range(real_data.shape[0]-1):
+            real_data_diff[i] = (real_data[i] - real_data[i+1])/(real_locations[i] - real_locations[i+1])
+        diff_locations = real_locations[:-1]
+        real_std_data_diff = np.zeros_like(real_data)*np.nan
+    # ravel the arrays
+    real_data = real_data.ravel()
+    real_std_data = real_std_data.ravel()
+    if args.data_grad:
+        real_data_diff = real_data_diff.ravel()
+        real_std_data_diff = real_std_data_diff.ravel()
+    else:
+        real_data_diff = None
+        real_std_data_diff = None
+        diff_locations = None
+
+    return real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff
 
 def build_grids(L, coarsening_factor, n_grid_c):
     # PDE grid
