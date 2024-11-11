@@ -18,11 +18,13 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 
 
 #version = "paperV2CASynthDiff"
-version = "paperV2CARealDiff"  
+#version = "paperV2CARealDiff"  
 #version = "paperV2CASTSynthDiff"
 #version = "paperV2CASTRealDiff"
 #version = "paperV2CASynthAdvDiff"
 #version = "paperV2CARealAdvDiff"
+#version = "paperV2CARealDiff_CArbc_clip"
+version = "paperV2CARealAdvDiff_CArbc_clip"
 
 #Ns_s = [1000]
 #Nb_s = [10]
@@ -383,11 +385,11 @@ if version == "paperV2CARealDiff":
     animals = all_animals()
     # Array of all ears
     ears = all_ears()
-    num_ST_list = [0]
+    num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [10] # try 10000000 for MH
-    Nb = [1]
+    Ns = [5000] # try 10000000 for MH
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
@@ -395,6 +397,7 @@ if version == "paperV2CARealDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
 
 if version == "paperV2CASTSynthDiff":
     raise ValueError("This version is not supported yet")
@@ -406,8 +409,8 @@ if version == "paperV2CASTRealDiff":
     ears = all_ears()
     num_ST_list = [4]
     sampler = ['NUTSWithGibbs']
-    Ns = [10]
-    Nb = [1]
+    Ns = [5000]
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
@@ -415,6 +418,7 @@ if version == "paperV2CASTRealDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
 
 if version == "paperV2CASynthAdvDiff":
     raise ValueError("This version is not supported yet")
@@ -424,11 +428,11 @@ if version == "paperV2CARealAdvDiff":
     animals = all_animals()
     # Array of all ears
     ears = all_ears()
-    num_ST_list = [0]
+    num_ST_list = [1]
 
     sampler = ['NUTSWithGibbs']
-    Ns = [10] # try 10000000 for MH
-    Nb = [1]
+    Ns = [5000] # try 10000000 for MH
+    Nb = [0]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type =['advection_diffusion']
@@ -436,11 +440,51 @@ if version == "paperV2CARealAdvDiff":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here 
+    NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
+
+if version == "paperV2CARealDiff_CArbc_clip":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [5000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":7}
+
+if version == "paperV2CARealAdvDiff_CArbc_clip":
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [5000] # try 10000000 for MH
+    Nb = [0]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type =['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here 
+    NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs)
 print("length of arg_list: ", len(arg_list))
 for args in arg_list:
     cmd = create_command(main_command, args)

@@ -61,8 +61,8 @@ if len(sys.argv) <= 2:
 else:
     args = parse_commandline_args(sys.argv[1:])
     # Add arguments that are not passed from the command line
-    args_predefined = Args()
-    args.NUTS_kwargs = args_predefined.NUTS_kwargs
+    #args_predefined = Args()
+    #args.NUTS_kwargs = args_predefined.NUTS_kwargs
 
 
 if args.sampler == 'NUTSWithGibbs':
@@ -81,6 +81,10 @@ real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 # The right boundary condition is given by the data (if rbc is not "zero")
 if args.rbc == 'fromData':
     real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+elif args.rbc == 'fromDataClip':
+    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    real_bc_r[real_bc_r<0] = 0
+
 else:
     real_bc_r = None
 
@@ -249,7 +253,8 @@ save_experiment_data(dir_name, exact_x,
                      mean_recon_data,
                      x_samples,
                      s_samples,
-                     args, locations, times, lapsed_time)
+                     args, locations, times, lapsed_time,
+                     sampler=my_sampler)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)

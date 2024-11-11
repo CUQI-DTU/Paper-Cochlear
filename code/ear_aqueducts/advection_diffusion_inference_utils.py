@@ -1,4 +1,5 @@
 import argparse
+import json
 import pandas as pd
 import numpy as np
 from cuqi.geometry import MappedGeometry, Discrete, Continuous1D
@@ -11,6 +12,7 @@ from scipy.interpolate import interp1d
 from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     NUTS as NUTSNew,
                                     Conjugate as ConjugateNew)
+import cuqi
 
 try:
     import dill as pickle
@@ -126,13 +128,16 @@ def parse_commandline_args(myargs):
     parser.add_argument('-true_a', metavar='true_a', type=float, 
                         default=arg_obj.true_a,
                         help='true advection speed')
-    parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData'],
+    parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData', 'fromDataClip'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
     parser.add_argument('-adaptive', metavar='adaptive', type=bool,
                         default=arg_obj.adaptive,
                         help='static adaptive time step size, fine at the beginning'+\
                         'and coarse at the end, default is True')
+    parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
+                        default=arg_obj.NUTS_kwargs,
+                        help='kwargs for NUTS sampler')
     
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -531,7 +536,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapse_time):
+                    x_samples, s_samples, experiment_par, locations, times, lapse_time, sampler):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -581,7 +586,20 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  's_samples': s_samples,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
-                 'lapse_time': lapse_time}
+                 'lapse_time': lapse_time,
+                 'num_tree_node_list': None,
+                 'epsilon_list': None}
+    # if sampler is NUTs, save the number of tree nodes
+    if isinstance(sampler, cuqi.experimental.mcmc.NUTS):
+        data_dict['num_tree_node_list'] = sampler.num_tree_node_list
+        data_dict['epsilon_list'] = sampler.epsilon_list
+    
+    # if sampler is HybridGibbs, save the number of tree nodes if the
+    # underlying sampler is NUTS
+    elif isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
+        if isinstance(sampler.samplers['x'], cuqi.experimental.mcmc.NUTS):
+            data_dict['num_tree_node_list'] = sampler.samplers['x'].num_tree_node_list
+            data_dict['epsilon_list'] = sampler.samplers['x'].epsilon_list
 
     with open(dir_name +'/'+tag+'_'+name_str+'.pkl', 'wb') as f:
         pickle.dump(data_dict, f)
@@ -777,7 +795,9 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
         std_samples = np.sqrt(1/s_samples.samples.flatten())
         axesLast[0].text(0.1, 0.25, 'Mean of std samples: {:.2f}'.format(np.mean(std_samples)))
         axesLast[0].text(0.1, 0.05, 'Std of std samples: {:.2f}'.format(np.std(std_samples)))
-
+    # print NUTS kwargs
+    if experiment_par.NUTS_kwargs is not None:
+        axesLast[0].text(0.1, -0.1, 'NUTS kwargs: {}'.format(experiment_par.NUTS_kwargs))
     # plot the histogram of the std samples
     if s_samples is not None:
         plt.sca(axesLast[1])
@@ -793,6 +813,10 @@ def process_experiment_par(experiment_par):
     
     if len(experiment_par.unknown_par_value) not in [1, 2]:
         raise Exception('Unknown parameter value not supported')
+    
+    # use json to convert NUTS_kwargs to dictionary
+    if experiment_par.NUTS_kwargs is not None:
+        experiment_par.NUTS_kwargs = json.loads(experiment_par.NUTS_kwargs)
     
     # Raise exception if more than one data point is added, unable to
     # create tag
@@ -853,7 +877,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -884,6 +908,8 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args.unknown_par_value = unknown_par_values[i_unknown_par_type]
                                                 args.true_a = true_a
                                                 args.rbc = rbc
+                                                if NUTS_kwargs is not None:
+                                                    args.NUTS_kwargs = NUTS_kwargs
                                                 args_list.append(args)
     return args_list
 

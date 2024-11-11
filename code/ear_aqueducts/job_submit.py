@@ -49,8 +49,11 @@ def create_command(main_command, args):
         add_data_pts_str = ' '.join([str(i) for i in args.add_data_pts])
     else:
         raise Exception("Unknown args.add_data_pts type")
+    if args.NUTS_kwargs is not None:
+        # replace " with ' in the string
+        NUTS_kwargs_str = str(args.NUTS_kwargs).replace("'", '"')
 
-    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns "+str(args.Ns)+" -Nb "+str(args.Nb)+" -noise_level "+str(args.noise_level)+" -add_data_pts "+ add_data_pts_str + " -num_CA "+str(args.num_CA)+" -num_ST "+str(args.num_ST) + " -true_a " + str(args.true_a) + " -rbc " + args.rbc
+    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns "+str(args.Ns)+" -Nb "+str(args.Nb)+" -noise_level "+str(args.noise_level)+" -add_data_pts "+ add_data_pts_str + " -num_CA "+str(args.num_CA)+" -num_ST "+str(args.num_ST) + " -true_a " + str(args.true_a) + " -rbc " + args.rbc + " -NUTS_kwargs " + "\'"+NUTS_kwargs_str+"\'"
     return cmd
  
 if __name__ == "__main__":
