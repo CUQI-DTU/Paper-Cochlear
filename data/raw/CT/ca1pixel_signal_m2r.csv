@@ -1,0 +1,21 @@
+Label Id,Label Name,Number Of Voxels,Volume (mm^3),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [0]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [0]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [1]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [1]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [2]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [2]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [3]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [3]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [4]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [4]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [5]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [5]),Image mean (CT_20200120_12h12_F000_FA7Combined_crop_mc [6]),Image stdev (CT_20200120_12h12_F000_FA7Combined_crop_mc [6])
+0,Clear Label,48124981,385,476.674,1313.39,523.484,1356.67,678.694,1640.51,651.304,1498.97,576.099,1352.87,556.68,1320.13,538.457,1317.15
+1,Label 1,1,8e-06,1260.28,nan,4097.35,nan,7674.07,nan,5928.71,nan,1944.89,nan,2310.71,nan,1903.61,nan
+2,Label 2,1,8e-06,313.063,nan,3318.7,nan,8245.15,nan,6205.08,nan,2407.03,nan,2175.39,nan,1841.68,nan
+3,Label 3,1,8e-06,315.357,nan,3310.67,nan,7498.62,nan,5847.29,nan,1580.23,nan,1417.39,nan,1454.08,nan
+4,Label 4,1,8e-06,580.257,nan,2838.21,nan,6433.28,nan,5307.17,nan,1475.87,nan,1149.05,nan,1316.47,nan
+5,Label 5,1,8e-06,756.857,nan,1771.73,nan,5867.93,nan,3918.45,nan,1464.4,nan,1296.98,nan,1255.69,nan
+6,Label 6,1,8e-06,-167.426,nan,1215.56,nan,4880.58,nan,3923.04,nan,1036.66,nan,1259.13,nan,1331.38,nan
+7,Label 7,1,8e-06,-150.225,nan,1416.24,nan,5044.56,nan,3731.53,nan,908.228,nan,796.993,nan,1105.47,nan
+8,Label 8,1,8e-06,491.957,nan,913.962,nan,4470.04,nan,3459.75,nan,1021.76,nan,1495.37,nan,981.62,nan
+9,Label 9,1,8e-06,840.57,nan,707.546,nan,4248.72,nan,3184.53,nan,855.477,nan,748.829,nan,1333.67,nan
+10,Label 10,1,8e-06,98.6207,nan,1104.32,nan,2872.62,nan,2254.52,nan,999.968,nan,1535.5,nan,824.515,nan
+11,Label 11,1,8e-06,-37.8428,nan,993.088,nan,2393.27,nan,2210.94,nan,1245.37,nan,1291.24,nan,1065.33,nan
+12,Label 12,1,8e-06,-194.948,nan,768.324,nan,2381.81,nan,2122.64,nan,1016.02,nan,1022.9,nan,1245.37,nan
+13,Label 13,1,8e-06,-138.757,nan,387.602,nan,2210.94,nan,1267.16,nan,1255.69,nan,1143.31,nan,887.587,nan
+14,Label 14,1,8e-06,111.235,nan,537.827,nan,2254.52,nan,1418.53,nan,620.393,nan,826.809,nan,970.153,nan
+15,Label 15,1,8e-06,275.221,nan,970.153,nan,2071.04,nan,1700.63,nan,344.026,nan,347.466,nan,713.28,nan
+16,Label 16,1,8e-06,-196.095,nan,1230.47,nan,1963.24,nan,1553.85,nan,1134.14,nan,405.95,nan,954.098,nan
+17,Label 17,1,8e-06,356.64,nan,560.762,nan,1458.67,nan,702.959,nan,1130.7,nan,975.887,nan,1028.64,nan
+18,Label 18,1,8e-06,354.347,nan,96.3272,nan,1340.55,nan,1460.96,nan,547.001,nan,451.821,nan,1222.44,nan
+19,Label 19,1,8e-06,254.579,nan,233.938,nan,1232.76,nan,1271.75,nan,1017.17,nan,591.724,nan,809.607,nan
