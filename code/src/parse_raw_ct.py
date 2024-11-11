@@ -131,10 +131,10 @@ def parse_list_of_CT_csvs(datadir, raw_filenames, parsed_CT_dir):
         print('Theres unexpected varation in ROI volumes; examine the volumes manually'
               '(print statement available above)')
 
-def parse_distances(positions_excel_file, microns_per_pixel, savedir):
+def parse_distances(positions_excel_file, savedir, microns_per_pixel=20):
     sheet_dict = pd.read_excel(positions_excel_file, sheet_name=None)
 
-    distances_sheet_dict = {k: add_micron_distances(v, 20)
+    distances_sheet_dict = {k: add_micron_distances(v, microns_per_pixel)
                             for (k, v) in sheet_dict.items()
                             if 'view' not in k}
 
@@ -166,6 +166,15 @@ def add_micron_distances(sheet_df, microns_per_pixel):
             df.loc[row_index, 'distance microns'] = 0.0
 
     return df
+
+def parseca1distances(rawdatadir, locsfile, parseddir, microns_per_pixel):
+    posdf = pd.read_csv(rawdatadir + locsfile, header=0)
+    distdf = add_micron_distances(posdf, microns_per_pixel)
+    df = distdf.sort_values(distdf.columns[2], ignore_index=True)
+    for row in range(1, len(df)):
+        df.loc[row, 'distance microns'] = df.loc[row-1, 'distance microns'] + pythagoras(df.iloc[row, [4, 5, 6]] - df.iloc[row -1 , [4, 5, 6]])
+        
+    df.to_csv(parseddir + locsfile.replace("_locations_", "_").replace(".csv", "_distances.csv"))
 
 def load_parsed_dfs(signal_files):
     result = {}
