@@ -47,6 +47,7 @@ class Args:
         self.rbc = "zero"
         self.adaptive = True
         self.data_grad = False
+        self.u0_from_data = False
 
 def all_animals():
     """Function to return all animals. """
@@ -144,6 +145,11 @@ def parse_commandline_args(myargs):
                         help='data_grad is set to True if we want to use the '+\
                              'gradient of the data to be used in the likelihood'+\
                              'function instead of the data itself')
+    parser.add_argument('-u0_from_data', metavar='u0_from_data', type=bool,
+                        default=arg_obj.u0_from_data,
+                        help='u0_from_data is set to True if we want to use the '+\
+                             'initial condition from the data')
+
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
     
@@ -916,7 +922,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -951,6 +957,7 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                     args.NUTS_kwargs = NUTS_kwargs
                                                 args_list.append(args)
                                                 args.data_grad = data_grad
+                                                args.u0_from_data = u0_from_data
     return args_list
 
 def peclet_number(a, d, L):
