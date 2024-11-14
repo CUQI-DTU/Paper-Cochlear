@@ -89,6 +89,9 @@ elif args.rbc == 'fromDataClip':
 else:
     real_bc_r = None
 
+if args.u0_from_data:
+    real_u0 = real_data.reshape([len(real_locations), len(real_times)])[:,0]
+
 # locations, including added locations that can be used in synthetic 
 # case only
 if len(args.add_data_pts) > 0:
@@ -122,6 +125,14 @@ coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
 
+#%% Step 4.1: Create u0
+#-----------------------
+if args.u0_from_data:
+    # interpolate real_u0 to the grid
+    u0 = np.interp(grid, locations, real_u0)
+else:
+    u0 = None
+
 #%% STEP 5: Create the PDE time steps array
 #------------------------------------------
 tau_max = 30*60 # Final time in sec
@@ -137,7 +148,8 @@ G_c = create_domain_geometry(grid_c, args.inference_type)
 #----------------------------
 PDE_form = create_PDE_form(real_bc_l, real_bc_r,
                            grid, grid_c, grid_c_fine, n_grid, h, times,
-                           args.inference_type)
+                           args.inference_type,
+                           u0=u0)
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
 PDE = TimeDependentLinearPDE(PDE_form,
