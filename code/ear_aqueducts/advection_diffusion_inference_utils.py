@@ -11,8 +11,10 @@ from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
 from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     NUTS as NUTSNew,
-                                    Conjugate as ConjugateNew)
+                                    Conjugate as ConjugateNew,
+                                    MH as MHNew)
 import cuqi
+import time
 
 try:
     import dill as pickle
@@ -48,6 +50,97 @@ class Args:
         self.adaptive = True
         self.data_grad = False
         self.u0_from_data = False
+
+class Callback:
+    def __init__(self,
+                 exact_x,
+                 exact_data,
+                 data,
+                 args, 
+                 locations,
+                 times, 
+                 non_grad_data=None,            
+                 non_grad_locations=None,
+                 L=None,
+                 dir_name=None):
+        self.exact_x = exact_x
+        self.exact_data = exact_data
+        self.data = data
+        self.args = args
+        self.locations = locations
+        self.times = times
+        self.non_grad_data = non_grad_data
+        self.non_grad_locations = non_grad_locations
+        self.L = L
+        self.dir_name = dir_name
+        #----------
+        self.sampler = None #
+        self.mean_recon_data = None
+        self.lapsed_time = None #
+        self._current_time = time.time() #
+        self.x_samples = None #
+        self.s_samples = None # will not be filled
+        self.non_grad_mean_recon_data = None
+
+
+ 
+    def __call__(self, sampler, plot_anyway=False, s_samples=None):
+        # if a 10th of the samples have been generated save the
+        # data and plot the results
+        if plot_anyway or sampler.iteration % (sampler.Ns//10) == 0:
+            self.sampler = sampler
+            self.lapsed_time = time.time() - self._current_time
+            self._current_time = time.time()
+            self.x_samples = sampler.get_samples()
+            A = sampler.target.model
+            G_cont2D = A.range_geometry
+            mean_recon_data = \
+            A(self.x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
+            non_grad_mean_recon_data = A.pde._solution_obs
+            self.mean_recon_data = mean_recon_data
+            self.non_grad_mean_recon_data = non_grad_mean_recon_data.reshape((len(self.non_grad_locations), len(self.times)))
+            
+            # Save data
+            save_experiment_data(dir_name=self.dir_name,
+                                 exact=self.exact_x, 
+                                 exact_data=self.exact_data,
+                                 data=self.data,
+                                 mean_recon_data=self.mean_recon_data,
+                                 x_samples=self.x_samples,
+                                 s_samples=s_samples,
+                                 experiment_par=self.args, 
+                                 locations=self.locations,
+                                 times=self.times,
+                                 lapsed_time=self.lapsed_time,
+                                 sampler=self.sampler)
+
+            fig = plot_experiment(exact=self.exact_x,
+                                  exact_data=self.exact_data,
+                                  data=self.data,
+                                  mean_recon_data=self.mean_recon_data,
+                                  x_samples=self.x_samples,
+                                  s_samples=s_samples,
+                                  experiment_par=self.args, 
+                                  locations=self.locations,
+                                  times=self.times, 
+                                  non_grad_data=self.non_grad_data,
+                                  non_grad_mean_recon_data=self.non_grad_mean_recon_data,
+                                  non_grad_locations=self.non_grad_locations,
+                                  lapsed_time=self.lapsed_time,
+                                  L=self.L)
+
+            # Save figure
+            tag = create_experiment_tag(self.args)
+            fig.savefig(self.dir_name+'/experiment_'+tag+'.png')
+            
+
+
+
+
+
+
+
+
 
 def all_animals():
     """Function to return all animals. """
@@ -503,7 +596,7 @@ def set_the_noise_std(
     
     return s_noise
 
-def sample_the_posterior(sampler, posterior, G_c, args):
+def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
     """Function to sample the posterior. """
     Ns = args.Ns
     Nb = args.Nb
@@ -518,18 +611,24 @@ def sample_the_posterior(sampler, posterior, G_c, args):
         x0[-1] = 0
 
     if sampler == 'MH':
-        my_sampler = MH(posterior, scale=10, x0=x0)
-        posterior_samples = my_sampler.sample_adapt(Ns)
+        my_sampler = MHNew(posterior, scale=10,
+                           initial_point=x0,
+                           callback=callback)
+        my_sampler.warmup(Nb)
+        my_sampler.sample(Ns)
+        posterior_samples = my_sampler.get_samples()
         posterior_samples_burnthin = posterior_samples.burnthin(Nb)
     elif sampler == 'NUTS':
         posterior.enable_FD()
         NUTS_kwargs = args.NUTS_kwargs
-        my_sampler = NUTS(posterior, x0=x0, **NUTS_kwargs)
-        posterior_samples = my_sampler.sample_adapt(Ns, Nb) 
+        my_sampler = NUTSNew(posterior, initial_point=x0, **NUTS_kwargs, callback=callback)
+        my_sampler.warmup(Nb)
+        my_sampler.sample(Ns)
+        posterior_samples = my_sampler.get_samples()
         posterior_samples_burnthin = posterior_samples
     elif sampler == 'NUTSWithGibbs':
         sampling_strategy = {
-            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs),
+            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs, callback=callback),
             "s" : ConjugateNew()
         }
         
@@ -566,7 +665,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapse_time, sampler):
+                    x_samples, s_samples, experiment_par, locations, times, lapsed_time, sampler):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -616,7 +715,7 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  's_samples': s_samples,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
-                 'lapse_time': lapse_time,
+                 'lapse_time': lapsed_time,
                  'num_tree_node_list': None,
                  'epsilon_list': None}
     # if sampler is NUTs, save the number of tree nodes
