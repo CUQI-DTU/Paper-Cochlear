@@ -25,7 +25,12 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "paperV2CARealAdvDiff"
 #version = "paperV2CARealDiff_CArbc_clip"
 #version = "paperV2CARealAdvDiff_CArbc_clip"
-version = "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15"
+#version = "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15"
+
+# V3
+#version = "paperV3CARealDiff"
+#version = "paperV3CASTRealDiff"
+version = "paperV3CARealAdvDiff"
 
 #Ns_s = [1000]
 #Nb_s = [10]
@@ -444,7 +449,7 @@ if version == "paperV2CARealAdvDiff":
     NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
 
 
-if version == "paperV2CARealDiff_CArbc_clip":
+if version == "paperV3CARealDiff":
 
     # Array of all animals
     animals = all_animals()
@@ -462,9 +467,37 @@ if version == "paperV2CARealDiff_CArbc_clip":
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
     noise_levels = ["fromDataAvg"] # this noise level will not be used here
-    NUTS_kwargs = {"max_depth":7}
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
 
-if version == "paperV2CARealAdvDiff_CArbc_clip":
+if version == "paperV3CASTRealDiff":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [4]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [5000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+
+
+if version == "paperV3CARealAdvDiff":
+
     # Array of all animals
     animals = all_animals()
     # Array of all ears
@@ -473,15 +506,18 @@ if version == "paperV2CARealAdvDiff_CArbc_clip":
 
     sampler = ['NUTSWithGibbs']
     Ns = [5000] # try 10000000 for MH
-    Nb = [0]
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
-    inference_type =['advection_diffusion']
+    inference_type = ['advection_diffusion']
     rbc = ['fromDataClip']
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
-    noise_levels = ["fromDataAvg"] # this noise level will not be used here 
-    NUTS_kwargs = {"max_depth":7, "step_size": 0.25}
+    noise_levels = ["fromDataAvg"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
 
 if version == "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15":
     # Array of all animals
