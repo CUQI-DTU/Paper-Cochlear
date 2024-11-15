@@ -91,8 +91,13 @@ class Callback:
             self.sampler = sampler
             self.lapsed_time = time.time() - self._current_time
             self._current_time = time.time()
-            self.x_samples = sampler.get_samples()
-            A = sampler.target.model
+            # if sampler is Gibbs,
+            if isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
+                self.x_samples = sampler.get_samples()['x']
+                A = sampler.target._likelihoods[0].model
+            else:
+                self.x_samples = sampler.get_samples()
+                A = sampler.target.model
             G_cont2D = A.range_geometry
             mean_recon_data = \
             A(self.x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
