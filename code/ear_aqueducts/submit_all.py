@@ -515,4 +515,4 @@ for args in arg_list:
     print(cmd)
     tag = create_experiment_tag(args)
     print(tag)
-    #submit(tag, cmd)
+    submit(tag, cmd)
