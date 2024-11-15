@@ -1038,7 +1038,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -1074,6 +1074,7 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args_list.append(args)
                                                 args.data_grad = data_grad
                                                 args.u0_from_data = u0_from_data
+                                                args.sampler_callback = sampler_callback
     return args_list
 
 def peclet_number(a, d, L):
