@@ -50,6 +50,7 @@ class Args:
         self.adaptive = True
         self.data_grad = False
         self.u0_from_data = False
+        self.sampler_callback = False
 
 class Callback:
     def __init__(self,
@@ -84,16 +85,23 @@ class Callback:
 
 
  
-    def __call__(self, sampler, plot_anyway=False, s_samples=None):
+    def __call__(self, sampler, sample_index, plot_anyway=False, s_samples=None):
         # if a 10th of the samples have been generated save the
         # data and plot the results
-        if plot_anyway or sampler.iteration % (sampler.Ns//10) == 0:
+        try:
+            sampler._Ns
+        except:
+            return
+
+        if plot_anyway or sample_index % (sampler._Ns//10) == 0:
+            print('Sample index to be saved: ', sample_index)
             self.sampler = sampler
             self.lapsed_time = time.time() - self._current_time
             self._current_time = time.time()
             # if sampler is Gibbs,
             if isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
                 self.x_samples = sampler.get_samples()['x']
+                s_samples = sampler.get_samples()['s']
                 A = sampler.target._likelihoods[0].model
             else:
                 self.x_samples = sampler.get_samples()
@@ -136,7 +144,7 @@ class Callback:
 
             # Save figure
             tag = create_experiment_tag(self.args)
-            fig.savefig(self.dir_name+'/experiment_'+tag+'.png')
+            fig.savefig(self.dir_name+'/experiment_'+tag+'_idx'+str(sample_index)+'.png')
             
 
 
@@ -247,6 +255,10 @@ def parse_commandline_args(myargs):
                         default=arg_obj.u0_from_data,
                         help='u0_from_data is set to True if we want to use the '+\
                              'initial condition from the data')
+    parser.add_argument('-sampler_callback', metavar='sampler_callback', type=bool,
+                        default=arg_obj.sampler_callback,
+                        help='sampler_callback is set to True if we want to pass'+\
+                                'a callback function to the sampler')
 
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -633,7 +645,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
         posterior_samples_burnthin = posterior_samples
     elif sampler == 'NUTSWithGibbs':
         sampling_strategy = {
-            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs, callback=callback),
+            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs),
             "s" : ConjugateNew()
         }
         
@@ -643,7 +655,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
             "s" : 1
         }
         
-        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps)
+        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps, callback=callback)
         my_sampler.warmup(Nb)
         my_sampler.sample(Ns)
         posterior_samples = my_sampler.get_samples()
