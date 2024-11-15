@@ -27,7 +27,8 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     Args,\
     build_grids,\
     create_time_steps,\
-    read_experiment_data
+    read_experiment_data,\
+    Callback
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -248,6 +249,19 @@ posterior = joint(y=data) # condition on y=y_obs
 
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
+# create the callback object
+callback = Callback(
+                 dir_name=dir_name,
+                 exact_x=exact_x,
+                 exact_data=exact_data,
+                 data=data.reshape(G_cont2D.fun_shape),
+                 args=args, 
+                 locations=diff_locations if args.data_grad else locations,
+                 times=times, 
+                 non_grad_data=real_data.reshape((len(locations), len(real_times))),            
+                 non_grad_locations=locations,
+                 L=L)
+
 # time the sampling
 import time
 start_time = time.time()
@@ -268,42 +282,7 @@ lapsed_time = time.time() - start_time
 x_samples = samples["x"] if args.sampler == 'NUTSWithGibbs' else samples
 s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
 
-mean_recon_data = \
-    A(x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
-non_grad_mean_recon_data = A.pde._solution_obs
-# if exact_data is not defined, set it to None
-if exact_data is not None:
-    exact_data = exact_data.reshape(G_cont2D.fun_shape)
-fig = plot_experiment(exact_x, exact_data,
-                data.reshape(G_cont2D.fun_shape),
-                mean_recon_data,
-                x_samples,
-                s_samples,
-                args, 
-                diff_locations if args.data_grad else locations,
-                times, 
-                non_grad_data=real_data.reshape((len(locations), len(real_times))),
-                non_grad_mean_recon_data=non_grad_mean_recon_data.reshape((len(locations), len(real_times))),
-                non_grad_locations=locations,
-                lapsed_time=lapsed_time, L=L)
-
-
-
-# Save figure
-fig.savefig(dir_name+'/experiment_'+tag+'.png')
-
-#%% STEP 19: Save the results
-#----------------------------
-save_experiment_data(dir_name, exact_x, 
-                     exact_data,
-                     data.reshape(G_cont2D.fun_shape),
-                     mean_recon_data,
-                     x_samples,
-                     s_samples,
-                     args, 
-                     diff_locations if args.data_grad else locations,
-                     times, lapsed_time,
-                     sampler=my_sampler)
+callback(sampler=my_sampler, s_samples=s_samples, plot_anyway=True)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)
