@@ -250,7 +250,7 @@ posterior = joint(y=data) # condition on y=y_obs
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
 # create the callback object
-callback = Callback(
+callback_obj = Callback(
                  dir_name=dir_name,
                  exact_x=exact_x,
                  exact_data=exact_data,
@@ -272,8 +272,12 @@ print(A.domain_geometry)
 # print A range geometry
 print(A.range_geometry)
 
+callback = None
+if args.sampler_callback:
+    callback = callback_obj
+
 samples, my_sampler = sample_the_posterior(
-    args.sampler, posterior, G_c, args)
+    args.sampler, posterior, G_c, args, callback=callback)
 
 lapsed_time = time.time() - start_time
 #%% STEP 18: Plot the results
@@ -282,7 +286,7 @@ lapsed_time = time.time() - start_time
 x_samples = samples["x"] if args.sampler == 'NUTSWithGibbs' else samples
 s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
 
-callback(sampler=my_sampler, s_samples=s_samples, plot_anyway=True)
+callback_obj(sampler=my_sampler, sample_index=None, s_samples=s_samples, plot_anyway=True)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)
