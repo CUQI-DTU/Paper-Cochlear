@@ -51,6 +51,7 @@ class Args:
         self.data_grad = False
         self.u0_from_data = False
         self.sampler_callback = False
+        self.pixel_data = False
 
 class Callback:
     def __init__(self,
@@ -225,7 +226,7 @@ def parse_commandline_args(myargs):
                         default=arg_obj.add_data_pts)
     # number of CA points used when -data_pts_type is CA
     parser.add_argument('-num_CA', metavar='num_CA', type=int,
-                        choices=range(6),
+                        choices=range(20),
                         default=arg_obj.num_CA,
                         help='number of CA points')
     # number of ST points used when -data_pts_type is CA_ST
@@ -259,6 +260,9 @@ def parse_commandline_args(myargs):
                         default=arg_obj.sampler_callback,
                         help='sampler_callback is set to True if we want to pass'+\
                                 'a callback function to the sampler')
+    parser.add_argument('-pixel_data', metavar='pixel_data', type=bool,
+                        default=arg_obj.pixel_data,
+                        help='pixel_data is set to True if we want to use the pixel data')
 
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -276,16 +280,33 @@ def read_data_files(args):
     args : argparse.Namespace
         Arguments from command line.
     """
-    CA_list = ['CA'+str(i+1) for i in range(args.num_CA)]
+
+
+    if args.pixel_data:
+        # assert num_ST is 0
+        assert args.num_ST == 0, 'num_ST should be 0 when using pixel data'
+        data_path =  '../../data/parsed/CT/ca1pixel'
+        pre='ca1pixel'
+        sep=''
+        sep2=' ' 
+    else:
+        # assert num_CA is 5 or less
+        assert args.num_CA <= 5, 'num_CA should be 5 or less when using averaged data'
+        data_path = '../../data/parsed/CT'
+        pre='20210120'
+        sep='_'
+        sep2=''
+
+    CA_list = ['CA'+sep2+str(i+1) for i in range(args.num_CA)]
 
     if args.num_ST == 0: # Only CA data
         print('CA data.')
         ## Read distance file
-        dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+        dist_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
         real_locations = dist_file['distance microns'].values[:args.num_CA]
         
         ## Read concentration file and times
-        constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        constr_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
         real_data = constr_file[CA_list].values.T
 
@@ -297,7 +318,7 @@ def read_data_files(args):
         print('CA and ST data.')
 
         ## Read distance file
-        dist_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+        dist_file = pd.read_csv(data_path+'/combined_CA_ST/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
         # locations distance microns where 20210120_omnip10um_KX_M1_nosound_L is in
         # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
         real_locations = dist_file['distance'].values
@@ -306,11 +327,11 @@ def read_data_files(args):
         CA_ST_list = CA_list + ST_list
     
         ## Read concentration file and times
-        constr_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        constr_file = pd.read_csv(data_path+'/combined_CA_ST/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
         real_data = constr_file[CA_ST_list].values.T
         ## Read std data
-        std_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        std_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         CA_ST_std_list = [item+' std' for item in CA_ST_list]
         real_std_data = std_file[CA_ST_std_list].values.T
     if args.data_grad:
