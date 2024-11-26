@@ -48,16 +48,17 @@ if len(sys.argv) <= 2:
     args.inference_type = 'advection_diffusion'
     args.unknown_par_type = 'custom_1'
     #args.unknown_par_value = [100.0]
-    args.sampler = 'NUTSWithGibbs'
+    args.sampler = 'MH'
     args.Ns = 5
     args.Nb = 1
     args.num_ST = 1
     args.noise_level = 0.1
     args.true_a = 0.8 # funval
-    args.rbc = 'fromData'
+    args.rbc = 'fromDataClip'
     args.NUTS_kwargs['max_depth'] = 5
     args.version = 'results_temp_rhs'
     args.adaptive = True
+    args.u0_from_data = True
 
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -80,18 +81,32 @@ print(tag)
  diff_locations, real_data_diff, real_std_data_diff) = read_data_files(args)
 # The left boundary condition is given by the data  
 real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+print("real_bc_l (before)")
+print(real_bc_l)
+real_bc_l[real_bc_l<0] = 0
+print("real_bc_l (after)")
+print(real_bc_l)
 # The right boundary condition is given by the data (if rbc is not "zero")
 if args.rbc == 'fromData':
-    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    raise Exception('Right boundary condition from data not supported')
 elif args.rbc == 'fromDataClip':
     real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    print("real_bc_r (before)")
+    print(real_bc_r)
     real_bc_r[real_bc_r<0] = 0
+    print("real_bc_r (after)")
+    print(real_bc_r)
 
 else:
     real_bc_r = None
 
 if args.u0_from_data:
     real_u0 = real_data.reshape([len(real_locations), len(real_times)])[:,0]
+    print("real_u0 (before)")
+    print(real_u0)
+    real_u0[real_u0<0] = 0
+    print("real_u0 (after)")
+    print(real_u0)
 
 # locations, including added locations that can be used in synthetic 
 # case only
