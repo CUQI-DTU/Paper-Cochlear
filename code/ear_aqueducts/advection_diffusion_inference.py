@@ -48,17 +48,18 @@ if len(sys.argv) <= 2:
     args.inference_type = 'advection_diffusion'
     args.unknown_par_type = 'custom_1'
     #args.unknown_par_value = [100.0]
-    args.sampler = 'MH'
-    args.Ns = 5
-    args.Nb = 1
-    args.num_ST = 1
-    args.noise_level = 0.1
+    args.sampler = 'NUTS'
+    args.Ns = 10
+    args.Nb = 5
+    args.num_ST = 0
+    args.noise_level = "estimated"
     args.true_a = 0.8 # funval
     args.rbc = 'fromDataClip'
     args.NUTS_kwargs['max_depth'] = 5
     args.version = 'results_temp_rhs'
     args.adaptive = True
     args.u0_from_data = True
+    args.data_grad = True
 
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -79,6 +80,12 @@ print(tag)
 #----------------------------------------
 (real_times, real_locations, real_data, real_std_data,
  diff_locations, real_data_diff, real_std_data_diff) = read_data_files(args)
+
+# read all data as well num_ST = 4
+cp_args = deepcopy(args)
+cp_args.num_ST = 4
+(real_times_all, real_locations_all, real_data_all, real_std_data_all,
+    diff_locations_all, real_data_diff_all, real_std_data_diff_all) = read_data_files(cp_args)
 # The left boundary condition is given by the data  
 real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 print("real_bc_l (before)")
@@ -119,7 +126,6 @@ else:
     locations = real_locations
 # times
 times = real_times
-
 
 #%% STEP 3: Create output directory
 #----------------------------------
@@ -218,16 +224,15 @@ if args.data_type == 'syntheticFromDiffusion':
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
-if args.data_grad:
-    s_noise = set_the_noise_std(
+
+s_noise = set_the_noise_std(
         args.data_type, args.noise_level, exact_data,
         real_data, real_std_data, G_cont2D,
-        is_grad_data=args.data_grad, times=times, locations=locations, real_data_diff=real_data_diff)
+        is_grad_data=args.data_grad, times=times, locations=locations, real_data_diff=real_data_diff,
+        real_data_all=real_data_all, real_std_data_all=real_std_data_all, real_locations_all=real_locations_all)
 
-else:
-    s_noise = set_the_noise_std(
-        args.data_type, args.noise_level, exact_data,
-        real_data, real_std_data, G_cont2D)
+print('s_noise')
+print(s_noise)
 
 if args.sampler == 'NUTSWithGibbs':
     y = Gaussian(A(x), lambda s: 1/s, geometry=G_cont2D)
