@@ -219,7 +219,7 @@ def parse_commandline_args(myargs):
     parser.add_argument('-noise_level', metavar='noise_level', 
                         type=str,
                         default=arg_obj.noise_level,
-                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to a float representing the noise level')
+                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to "estimated" to use the estimated noise level, or set to a float representing the noise level (e.g 0.1 for 10% noise)')
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
@@ -598,22 +598,73 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
     exact_data = A(exact_x)
     return exact_x, exact_data
 
+def estimate_noise_std(locations, times, real_data, real_std_data):
+    """Function to estimate the noise standard deviation. """
+
+    data_for_noise_estimation_per_case = []
+    std_data_for_noise_estimation_per_case = []
+
+    for j, loc in enumerate(locations):
+        for k, t in enumerate(times/60):
+            orig_data = real_data[j, k]
+            orig_std_data = real_std_data[j, k]
+
+            # if data below line (500, 0) to (3000, 15), add to noise estimation
+            line_eq = lambda loc_x:  15/2500*(loc_x-500)
+            # draw line
+            if t < line_eq(loc):
+                data_for_noise_estimation_per_case.append(orig_data)
+                std_data_for_noise_estimation_per_case.append(orig_std_data)
+    
+    return np.sqrt(np.average(np.array(std_data_for_noise_estimation_per_case)**2))
+
+def estimate_grad_data_noise_std(data_noise_std, locations, real_data_diff):
+    std_not_scaled = np.sqrt(2)*data_noise_std
+    diff_locations = np.diff(locations)
+    std_per_loc = np.zeros_like(real_data_diff)
+    # loop over rows of location factor
+    for i in range(std_per_loc.shape[0]):
+        std_per_loc[i, :] = std_not_scaled/diff_locations[i]
+    std_matrix = np.diag(std_per_loc.flatten())
+    return std_not_scaled, std_matrix
+
 def set_the_noise_std(
         data_type, noise_level, exact_data,
-        real_data, real_std_data, G_cont2D):
+        real_data, real_std_data, G_cont2D,
+        is_grad_data, times, locations, real_data_diff):
     """Function to set the noise standard deviation. """
     # Use noise levels read from the file
     if noise_level == "fromDataVar":
         ## Noise standard deviation
+        if is_grad_data:
+            raise Exception('Noise level "fromDataVar" not supported yet for gradient data')
         s_noise = real_std_data
     # Use noise level specified in the command line
     elif noise_level == "fromDataAvg":
+        if is_grad_data:
+            raise Exception('Noise level "fromDataAvg" not supported yet for gradient data')
         s_noise = np.mean(real_std_data)
 
     elif noise_level == "avgOverTime":
+        if is_grad_data:
+            raise Exception('Noise level "avgOverTime" not supported yet for gradient data')
         s_noise = real_std_data.reshape(G_cont2D.fun_shape)
         s_noise = np.mean(s_noise, axis=1)
         s_noise = np.repeat(s_noise, G_cont2D.fun_shape[1])
+    elif noise_level == "estimated":
+        if not is_grad_data:
+            raise Exception('Noise level not supported yet for non gradient data')
+        estimated_noise_std = estimate_noise_std(
+            locations=locations,
+            times=times,
+            real_data=real_data.reshape((len(locations),-1)),
+            real_std_data=real_std_data.reshape((len(locations),-1)))
+        
+        std_scaled, std_matrix = estimate_grad_data_noise_std(data_noise_std=estimated_noise_std,
+                                                       locations=locations,
+                                                       data_diff=real_data_diff.reshape((len(locations)-1,-1))
+                                                       )
+        s_noise = np.diag(std_matrix)
 
     else:
         try:
@@ -626,8 +677,9 @@ def set_the_noise_std(
                       *np.linalg.norm(exact_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
         elif data_type == 'real':
+            used_data = real_data if not is_grad_data else real_data_diff
             s_noise = noise_level \
-                      *np.linalg.norm(real_data) \
+                      *np.linalg.norm(used_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
         else:
             raise Exception('Data type not supported')
@@ -1099,35 +1151,7 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args.pixel_data = pixel_data
     return args_list
 
-def estimate_noise_std(locations, times, real_data, real_std_data):
-    """Function to estimate the noise standard deviation. """
 
-    data_for_noise_estimation_per_case = []
-    std_data_for_noise_estimation_per_case = []
-
-    for j, loc in enumerate(locations):
-        for k, t in enumerate(times/60):
-            orig_data = real_data[j, k]
-            orig_std_data = real_std_data[j, k]
-
-            # if data below line (500, 0) to (3000, 15), add to noise estimation
-            line_eq = lambda loc_x:  15/2500*(loc_x-500)
-            # draw line
-            if t < line_eq(loc):
-                data_for_noise_estimation_per_case.append(orig_data)
-                std_data_for_noise_estimation_per_case.append(orig_std_data)
-    
-    return np.sqrt(np.average(np.array(std_data_for_noise_estimation_per_case)**2))
-
-def estimate_grad_data_noise_std(data_noise_std, locations, real_data_diff):
-    std_not_scaled = np.sqrt(2)*data_noise_std
-    diff_locations = np.diff(locations)
-    std_per_loc = np.zeros_like(real_data_diff)
-    # loop over rows of location factor
-    for i in range(std_per_loc.shape[0]):
-        std_per_loc[i, :] = std_not_scaled/diff_locations[i]
-    cov = np.diag(std_per_loc.flatten()**2)
-    return std_not_scaled, cov
 
 def peclet_number(a, d, L):
     """Function to compute the peclet number.
