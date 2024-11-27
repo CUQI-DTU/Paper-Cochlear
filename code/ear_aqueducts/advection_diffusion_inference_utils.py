@@ -1099,6 +1099,36 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args.pixel_data = pixel_data
     return args_list
 
+def estimate_noise_std(locations, times, real_data, real_std_data):
+    """Function to estimate the noise standard deviation. """
+
+    data_for_noise_estimation_per_case = []
+    std_data_for_noise_estimation_per_case = []
+
+    for j, loc in enumerate(locations):
+        for k, t in enumerate(times/60):
+            orig_data = real_data[j, k]
+            orig_std_data = real_std_data[j, k]
+
+            # if data below line (500, 0) to (3000, 15), add to noise estimation
+            line_eq = lambda loc_x:  15/2500*(loc_x-500)
+            # draw line
+            if t < line_eq(loc):
+                data_for_noise_estimation_per_case.append(orig_data)
+                std_data_for_noise_estimation_per_case.append(orig_std_data)
+    
+    return np.sqrt(np.average(np.array(std_data_for_noise_estimation_per_case)**2))
+
+def estimate_grad_data_noise_std(data_noise_std, locations, real_data_diff):
+    std_not_scaled = np.sqrt(2)*data_noise_std
+    diff_locations = np.diff(locations)
+    std_per_loc = np.zeros_like(real_data_diff)
+    # loop over rows of location factor
+    for i in range(std_per_loc.shape[0]):
+        std_per_loc[i, :] = std_not_scaled/diff_locations[i]
+    cov = np.diag(std_per_loc.flatten()**2)
+    return std_not_scaled, cov
+
 def peclet_number(a, d, L):
     """Function to compute the peclet number.
     Parameters
