@@ -221,7 +221,9 @@ if args.data_type == 'syntheticFromDiffusion':
 if args.data_grad:
     s_noise = set_the_noise_std(
         args.data_type, args.noise_level, exact_data,
-        real_data_diff, real_std_data_diff, G_cont2D)
+        real_data, real_std_data, G_cont2D,
+        is_grad_data=args.data_grad, times=times, locations=locations, real_data_diff=real_data_diff)
+
 else:
     s_noise = set_the_noise_std(
         args.data_type, args.noise_level, exact_data,
