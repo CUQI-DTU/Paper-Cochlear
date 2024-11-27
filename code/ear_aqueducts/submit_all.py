@@ -30,7 +30,12 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 # V3
 #version = "paperV3CARealDiff"
 #version = "paperV3CASTRealDiff"
-version = "paperV3CARealAdvDiff"
+#version = "paperV3CARealAdvDiff"
+
+version = "paperV4CARealDiff"
+#version = "paperV4CARealAdvDiff"
+#version = "paperV4CARealDiffPixel"
+#version = "paperV4CARealAdvDiffPixel"
 
 #Ns_s = [1000]
 #Nb_s = [10]
@@ -541,6 +546,103 @@ if version == "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15":
     u0_from_data = True
     sampler_callback = True
     pixel_data = True
+
+if version == "paperV4CARealDiff":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['MH']
+    Ns = [20] # try 10000000 for MH
+    Nb = [10]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["estimated"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+
+if version == "paperV4CARealAdvDiff":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [2] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["estimated"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+
+if version == "paperV4CARealDiffPixel":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [2] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.3] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = True
+
+if version == "paperV4CARealAdvDiffPixel":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [2] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.3] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = True
+
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
