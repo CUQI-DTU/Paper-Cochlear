@@ -618,10 +618,10 @@ def estimate_noise_std(locations, times, real_data, real_std_data):
     
     return np.sqrt(np.average(np.array(std_data_for_noise_estimation_per_case)**2))
 
-def estimate_grad_data_noise_std(data_noise_std, locations, real_data_diff):
+def estimate_grad_data_noise_std(data_noise_std, locations, data_diff):
     std_not_scaled = np.sqrt(2)*data_noise_std
     diff_locations = np.diff(locations)
-    std_per_loc = np.zeros_like(real_data_diff)
+    std_per_loc = np.zeros_like(data_diff)
     # loop over rows of location factor
     for i in range(std_per_loc.shape[0]):
         std_per_loc[i, :] = std_not_scaled/diff_locations[i]
@@ -631,7 +631,8 @@ def estimate_grad_data_noise_std(data_noise_std, locations, real_data_diff):
 def set_the_noise_std(
         data_type, noise_level, exact_data,
         real_data, real_std_data, G_cont2D,
-        is_grad_data, times, locations, real_data_diff):
+        is_grad_data, times, locations, real_data_diff,
+        real_data_all, real_std_data_all, real_locations_all):
     """Function to set the noise standard deviation. """
     # Use noise levels read from the file
     if noise_level == "fromDataVar":
@@ -655,10 +656,10 @@ def set_the_noise_std(
         if not is_grad_data:
             raise Exception('Noise level not supported yet for non gradient data')
         estimated_noise_std = estimate_noise_std(
-            locations=locations,
+            locations=real_locations_all,
             times=times,
-            real_data=real_data.reshape((len(locations),-1)),
-            real_std_data=real_std_data.reshape((len(locations),-1)))
+            real_data=real_data_all.reshape((len(real_locations_all),-1)),
+            real_std_data=real_std_data_all.reshape((len(real_locations_all),-1)))
         
         std_scaled, std_matrix = estimate_grad_data_noise_std(data_noise_std=estimated_noise_std,
                                                        locations=locations,
