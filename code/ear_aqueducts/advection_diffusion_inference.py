@@ -60,6 +60,7 @@ if len(sys.argv) <= 2:
     args.adaptive = True
     args.u0_from_data = True
     args.data_grad = True
+    args.pixel_data = False
 
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -67,6 +68,8 @@ else:
     #args_predefined = Args()
     #args.NUTS_kwargs = args_predefined.NUTS_kwargs
 
+print('Arguments:')
+print(args)
 
 if args.sampler == 'NUTSWithGibbs':
     args.NUTS_kwargs["enable_FD"] = True
@@ -84,6 +87,7 @@ print(tag)
 # read all data as well num_ST = 4
 cp_args = deepcopy(args)
 cp_args.num_ST = 4
+cp_args.pixel_data = False
 (real_times_all, real_locations_all, real_data_all, real_std_data_all,
     diff_locations_all, real_data_diff_all, real_std_data_diff_all) = read_data_files(cp_args)
 # The left boundary condition is given by the data  
