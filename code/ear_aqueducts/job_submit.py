@@ -52,8 +52,16 @@ def create_command(main_command, args):
     if args.NUTS_kwargs is not None:
         # replace " with ' in the string
         NUTS_kwargs_str = str(args.NUTS_kwargs).replace("'", '"')
+    
+    # boolean arguments
+    
+    data_grad_str = "--data_grad" if args.data_grad else ""
+    u0_from_data_str = "--u0_from_data" if args.u0_from_data else ""
+    sampler_callback_str = "--sampler_callback" if args.sampler_callback else ""
+    pixel_data_str = "--pixel_data" if args.pixel_data else ""
+    adaptive_str = "--adaptive" if args.adaptive else ""
 
-    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns "+str(args.Ns)+" -Nb "+str(args.Nb)+" -noise_level "+str(args.noise_level)+" -add_data_pts "+ add_data_pts_str + " -num_CA "+str(args.num_CA)+" -num_ST "+str(args.num_ST) + " -true_a " + str(args.true_a) + " -rbc " + args.rbc + " -NUTS_kwargs " + "\'"+NUTS_kwargs_str+"\'" + " -data_grad " + str(args.data_grad) + " -u0_from_data " + str(args.u0_from_data) + " -sampler_callback " + str(args.sampler_callback) + " -pixel_data " + str(args.pixel_data) 
+    cmd = main_command+" -animal "+args.animal+" -ear "+args.ear+" -version "+args.version+" -sampler "+args.sampler+" -unknown_par_type "+args.unknown_par_type+" -unknown_par_value "+unknown_par_value_str+" -data_type "+args.data_type+" -inference_type "+args.inference_type+" -Ns "+str(args.Ns)+" -Nb "+str(args.Nb)+" -noise_level "+str(args.noise_level)+" -add_data_pts "+ add_data_pts_str + " -num_CA "+str(args.num_CA)+" -num_ST "+str(args.num_ST) + " -true_a " + str(args.true_a) + " -rbc " + args.rbc + " -NUTS_kwargs " + "\'"+NUTS_kwargs_str+"\'"  + " "+data_grad_str+ " " + u0_from_data_str + " " + sampler_callback_str + " " + pixel_data_str + " " + adaptive_str
     return cmd
  
 if __name__ == "__main__":
