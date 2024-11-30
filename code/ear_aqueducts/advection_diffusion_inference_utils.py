@@ -47,7 +47,7 @@ class Args:
         self.NUTS_kwargs = {'max_depth': 10}
         self.true_a = None
         self.rbc = "zero"
-        self.adaptive = True
+        self.adaptive = False
         self.data_grad = False
         self.u0_from_data = False
         self.sampler_callback = False
@@ -240,29 +240,19 @@ def parse_commandline_args(myargs):
     parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData', 'fromDataClip'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
-    parser.add_argument('-adaptive', metavar='adaptive', type=bool,
-                        default=arg_obj.adaptive,
-                        help='static adaptive time step size, fine at the beginning'+\
-                        'and coarse at the end, default is True')
+    parser.add_argument('--adaptive', action='store_true',
+                        help='adaptive if passed, the adaptive time step is used')
     parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
                         default=arg_obj.NUTS_kwargs,
                         help='kwargs for NUTS sampler')
-    parser.add_argument('-data_grad', metavar='data_grad', type=bool,
-                        default=arg_obj.data_grad,
-                        help='data_grad is set to True if we want to use the '+\
-                             'gradient of the data to be used in the likelihood'+\
-                             'function instead of the data itself')
-    parser.add_argument('-u0_from_data', metavar='u0_from_data', type=bool,
-                        default=arg_obj.u0_from_data,
-                        help='u0_from_data is set to True if we want to use the '+\
-                             'initial condition from the data')
-    parser.add_argument('-sampler_callback', metavar='sampler_callback', type=bool,
-                        default=arg_obj.sampler_callback,
-                        help='sampler_callback is set to True if we want to pass'+\
-                                'a callback function to the sampler')
-    parser.add_argument('-pixel_data', metavar='pixel_data', type=bool,
-                        default=arg_obj.pixel_data,
-                        help='pixel_data is set to True if we want to use the pixel data')
+    parser.add_argument('--data_grad', action='store_true',
+                        help='data_grad if passed, the data is gradient data')
+    parser.add_argument('--u0_from_data', action='store_true',
+                        help='u0_from_data if passed, the initial condition is set using the data')
+    parser.add_argument('--sampler_callback', action='store_true',
+                        help='sampler_callback if passed, the sampler callback is used')
+    parser.add_argument('--pixel_data',  action='store_true',
+                        help='pixel_data if passed, the data is pixel data')
 
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -1112,7 +1102,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False, pixel_data=False):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False, pixel_data=False, adaptive=False):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -1150,6 +1140,7 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args.u0_from_data = u0_from_data
                                                 args.sampler_callback = sampler_callback
                                                 args.pixel_data = pixel_data
+                                                args.adaptive = adaptive
     return args_list
 
 
