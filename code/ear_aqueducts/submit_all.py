@@ -570,6 +570,7 @@ if version == "paperV4CARealDiff":
     u0_from_data = True
     sampler_callback = True
     pixel_data = False
+    adaptive = False
 
 if version == "paperV4CARealAdvDiff":
 
@@ -646,7 +647,7 @@ if version == "paperV4CARealAdvDiffPixel":
 
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs, data_grad, u0_from_data, sampler_callback, pixel_data)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs, data_grad, u0_from_data, sampler_callback, pixel_data, adaptive)
 print("length of arg_list: ", len(arg_list))
 for args in arg_list:
     cmd = create_command(main_command, args)
