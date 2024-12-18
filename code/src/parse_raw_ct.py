@@ -11,7 +11,7 @@ from pathlib import Path
 
 pythagoras = lambda x: np.sqrt(sum(i**2 for i in x))
 
-def parse_all_CT(raw_CT_dir = '../data/raw/CT/', parsed_CT_dir = '../data/parsed/CT/'):
+def parse_all_CT(raw_CT_dir = '../../data/raw/CT/', parsed_CT_dir = '../../data/parsed/CT/'):
     
     ct_overview_and_positions = raw_CT_dir + 'CT positions and overview.xlsx'
 
