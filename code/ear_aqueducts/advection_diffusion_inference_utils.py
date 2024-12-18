@@ -11,8 +11,10 @@ from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
 from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     NUTS as NUTSNew,
-                                    Conjugate as ConjugateNew)
+                                    Conjugate as ConjugateNew,
+                                    MH as MHNew)
 import cuqi
+import time
 
 try:
     import dill as pickle
@@ -46,6 +48,113 @@ class Args:
         self.true_a = None
         self.rbc = "zero"
         self.adaptive = True
+        self.data_grad = False
+        self.u0_from_data = False
+        self.sampler_callback = False
+        self.pixel_data = False
+
+class Callback:
+    def __init__(self,
+                 exact_x,
+                 exact_data,
+                 data,
+                 args, 
+                 locations,
+                 times, 
+                 non_grad_data=None,            
+                 non_grad_locations=None,
+                 L=None,
+                 dir_name=None):
+        self.exact_x = exact_x
+        self.exact_data = exact_data
+        self.data = data
+        self.args = args
+        self.locations = locations
+        self.times = times
+        self.non_grad_data = non_grad_data
+        self.non_grad_locations = non_grad_locations
+        self.L = L
+        self.dir_name = dir_name
+        #----------
+        self.sampler = None #
+        self.mean_recon_data = None
+        self.lapsed_time = None #
+        self._current_time = time.time() #
+        self.x_samples = None #
+        self.s_samples = None # will not be filled
+        self.non_grad_mean_recon_data = None
+
+
+ 
+    def __call__(self, sampler, sample_index, plot_anyway=False, s_samples=None):
+        # if a 10th of the samples have been generated save the
+        # data and plot the results
+        try:
+            sampler._Ns
+        except:
+            return
+
+        if plot_anyway or sample_index % (sampler._Ns//10) == 0:
+            print('Sample index to be saved: ', sample_index)
+            self.sampler = sampler
+            self.lapsed_time = time.time() - self._current_time
+            self._current_time = time.time()
+            # if sampler is Gibbs,
+            if isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
+                self.x_samples = sampler.get_samples()['x']
+                s_samples = sampler.get_samples()['s']
+                A = sampler.target._likelihoods[0].model
+            else:
+                self.x_samples = sampler.get_samples()
+                A = sampler.target.model
+            G_cont2D = A.range_geometry
+            mean_recon_data = \
+            A(self.x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
+            non_grad_mean_recon_data = A.pde._solution_obs
+            self.mean_recon_data = mean_recon_data
+            self.non_grad_mean_recon_data = non_grad_mean_recon_data.reshape((len(self.non_grad_locations), len(self.times)))
+            
+            # Save data
+            save_experiment_data(dir_name=self.dir_name,
+                                 exact=self.exact_x, 
+                                 exact_data=self.exact_data,
+                                 data=self.data,
+                                 mean_recon_data=self.mean_recon_data,
+                                 x_samples=self.x_samples,
+                                 s_samples=s_samples,
+                                 experiment_par=self.args, 
+                                 locations=self.locations,
+                                 times=self.times,
+                                 lapsed_time=self.lapsed_time,
+                                 sampler=self.sampler)
+
+            fig = plot_experiment(exact=self.exact_x,
+                                  exact_data=self.exact_data,
+                                  data=self.data,
+                                  mean_recon_data=self.mean_recon_data,
+                                  x_samples=self.x_samples,
+                                  s_samples=s_samples,
+                                  experiment_par=self.args, 
+                                  locations=self.locations,
+                                  times=self.times, 
+                                  non_grad_data=self.non_grad_data,
+                                  non_grad_mean_recon_data=self.non_grad_mean_recon_data,
+                                  non_grad_locations=self.non_grad_locations,
+                                  lapsed_time=self.lapsed_time,
+                                  L=self.L)
+
+            # Save figure
+            tag = create_experiment_tag(self.args)
+            fig.savefig(self.dir_name+'/experiment_'+tag+'_idx'+str(sample_index)+'.png')
+            
+
+
+
+
+
+
+
+
 
 def all_animals():
     """Function to return all animals. """
@@ -117,7 +226,7 @@ def parse_commandline_args(myargs):
                         default=arg_obj.add_data_pts)
     # number of CA points used when -data_pts_type is CA
     parser.add_argument('-num_CA', metavar='num_CA', type=int,
-                        choices=range(6),
+                        choices=range(20),
                         default=arg_obj.num_CA,
                         help='number of CA points')
     # number of ST points used when -data_pts_type is CA_ST
@@ -138,7 +247,23 @@ def parse_commandline_args(myargs):
     parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
                         default=arg_obj.NUTS_kwargs,
                         help='kwargs for NUTS sampler')
-    
+    parser.add_argument('-data_grad', metavar='data_grad', type=bool,
+                        default=arg_obj.data_grad,
+                        help='data_grad is set to True if we want to use the '+\
+                             'gradient of the data to be used in the likelihood'+\
+                             'function instead of the data itself')
+    parser.add_argument('-u0_from_data', metavar='u0_from_data', type=bool,
+                        default=arg_obj.u0_from_data,
+                        help='u0_from_data is set to True if we want to use the '+\
+                             'initial condition from the data')
+    parser.add_argument('-sampler_callback', metavar='sampler_callback', type=bool,
+                        default=arg_obj.sampler_callback,
+                        help='sampler_callback is set to True if we want to pass'+\
+                                'a callback function to the sampler')
+    parser.add_argument('-pixel_data', metavar='pixel_data', type=bool,
+                        default=arg_obj.pixel_data,
+                        help='pixel_data is set to True if we want to use the pixel data')
+
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
     
@@ -155,28 +280,45 @@ def read_data_files(args):
     args : argparse.Namespace
         Arguments from command line.
     """
-    CA_list = ['CA'+str(i+1) for i in range(args.num_CA)]
+
+
+    if args.pixel_data:
+        # assert num_ST is 0
+        assert args.num_ST == 0, 'num_ST should be 0 when using pixel data'
+        data_path =  '../../data/parsed/CT/ca1pixel'
+        pre='ca1pixel'
+        sep=''
+        sep2=' ' 
+    else:
+        # assert num_CA is 5 or less
+        assert args.num_CA <= 5, 'num_CA should be 5 or less when using averaged data'
+        data_path = '../../data/parsed/CT'
+        pre='20210120'
+        sep='_'
+        sep2=''
+
+    CA_list = ['CA'+sep2+str(i+1) for i in range(args.num_CA)]
 
     if args.num_ST == 0: # Only CA data
         print('CA data.')
         ## Read distance file
-        dist_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+        dist_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
         real_locations = dist_file['distance microns'].values[:args.num_CA]
         
         ## Read concentration file and times
-        constr_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        constr_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        real_data = constr_file[CA_list].values.T.ravel()
+        real_data = constr_file[CA_list].values.T
 
         ## Read std data
         CA_std_list = [item+' std' for item in CA_list]
-        real_std_data = constr_file[CA_std_list].values.T.ravel()
+        real_std_data = constr_file[CA_std_list].values.T
   
     elif args.num_ST > 0: # CA and ST data
         print('CA and ST data.')
 
         ## Read distance file
-        dist_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_distances.csv')
+        dist_file = pd.read_csv(data_path+'/combined_CA_ST/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
         # locations distance microns where 20210120_omnip10um_KX_M1_nosound_L is in
         # ['CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'ST1', 'ST2', 'ST3', 'ST4', 'ST5', 'ST6', 'ST7', 'ST8']
         real_locations = dist_file['distance'].values
@@ -185,15 +327,34 @@ def read_data_files(args):
         CA_ST_list = CA_list + ST_list
     
         ## Read concentration file and times
-        constr_file = pd.read_csv('../../data/parsed/CT/combined_CA_ST/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        constr_file = pd.read_csv(data_path+'/combined_CA_ST/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         real_times = constr_file['time'].values*60
-        real_data = constr_file[CA_ST_list].values.T.ravel()
+        real_data = constr_file[CA_ST_list].values.T
         ## Read std data
-        std_file = pd.read_csv('../../data/parsed/CT/20210120_'+args.animal+'_'+args.ear+'_parsed.csv')
+        std_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_parsed.csv')
         CA_ST_std_list = [item+' std' for item in CA_ST_list]
-        real_std_data = std_file[CA_ST_std_list].values.T.ravel()
+        real_std_data = std_file[CA_ST_std_list].values.T
+    if args.data_grad:
+        print('real_data shape: ', real_data.shape)
+        print('real data:\n'   , real_data)
+        real_data_diff = np.zeros((real_data.shape[0]-1, real_data.shape[1]))
 
-    return real_times, real_locations, real_data, real_std_data
+        for i in range(real_data.shape[0]-1):
+            real_data_diff[i] = (real_data[i] - real_data[i+1])/(real_locations[i] - real_locations[i+1])
+        diff_locations = real_locations[:-1]
+        real_std_data_diff = np.zeros_like(real_data)*np.nan
+    # ravel the arrays
+    real_data = real_data.ravel()
+    real_std_data = real_std_data.ravel()
+    if args.data_grad:
+        real_data_diff = real_data_diff.ravel()
+        real_std_data_diff = real_std_data_diff.ravel()
+    else:
+        real_data_diff = None
+        real_std_data_diff = None
+        diff_locations = None
+
+    return real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff
 
 def build_grids(L, coarsening_factor, n_grid_c):
     # PDE grid
@@ -473,7 +634,7 @@ def set_the_noise_std(
     
     return s_noise
 
-def sample_the_posterior(sampler, posterior, G_c, args):
+def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
     """Function to sample the posterior. """
     Ns = args.Ns
     Nb = args.Nb
@@ -488,14 +649,20 @@ def sample_the_posterior(sampler, posterior, G_c, args):
         x0[-1] = 0
 
     if sampler == 'MH':
-        my_sampler = MH(posterior, scale=10, x0=x0)
-        posterior_samples = my_sampler.sample_adapt(Ns)
+        my_sampler = MHNew(posterior, scale=10,
+                           initial_point=x0,
+                           callback=callback)
+        my_sampler.warmup(Nb)
+        my_sampler.sample(Ns)
+        posterior_samples = my_sampler.get_samples()
         posterior_samples_burnthin = posterior_samples.burnthin(Nb)
     elif sampler == 'NUTS':
         posterior.enable_FD()
         NUTS_kwargs = args.NUTS_kwargs
-        my_sampler = NUTS(posterior, x0=x0, **NUTS_kwargs)
-        posterior_samples = my_sampler.sample_adapt(Ns, Nb) 
+        my_sampler = NUTSNew(posterior, initial_point=x0, **NUTS_kwargs, callback=callback)
+        my_sampler.warmup(Nb)
+        my_sampler.sample(Ns)
+        posterior_samples = my_sampler.get_samples()
         posterior_samples_burnthin = posterior_samples
     elif sampler == 'NUTSWithGibbs':
         sampling_strategy = {
@@ -509,7 +676,7 @@ def sample_the_posterior(sampler, posterior, G_c, args):
             "s" : 1
         }
         
-        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps)
+        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps, callback=callback)
         my_sampler.warmup(Nb)
         my_sampler.sample(Ns)
         posterior_samples = my_sampler.get_samples()
@@ -536,7 +703,7 @@ def plot_time_series(times, locations, data, plot_legend=True):
     return lines, legends
 
 def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapse_time, sampler):
+                    x_samples, s_samples, experiment_par, locations, times, lapsed_time, sampler):
     # is const inference
     #const = True if samples.geometry.par_dim == 1 else False
 
@@ -586,7 +753,7 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  's_samples': s_samples,
                  'experiment_par': experiment_par, 'locations': locations,
                  'times': times,
-                 'lapse_time': lapse_time,
+                 'lapse_time': lapsed_time,
                  'num_tree_node_list': None,
                  'epsilon_list': None}
     # if sampler is NUTs, save the number of tree nodes
@@ -639,7 +806,11 @@ def read_experiment_data(dir_name, tag):
     return data_dict
 
 def plot_experiment(exact, exact_data, data, mean_recon_data,
-                    x_samples, s_samples, experiment_par, locations, times, lapsed_time=None, L=None):
+                    x_samples, s_samples, experiment_par, locations, times,
+                    non_grad_data=None,
+                    non_grad_mean_recon_data=None,
+                    non_grad_locations=None,
+                    lapsed_time=None, L=None):
     """Method to plot the numerical experiment results."""
     # Create tag
     tag = create_experiment_tag(experiment_par)
@@ -683,11 +854,11 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     marker = 'o' if const_true_x else ''
 
     # Create figure: 
-    fig = plt.figure(figsize=(12, 18), layout='constrained')
+    fig = plt.figure(figsize=(12, 20), layout='constrained')
 
     subfigs = fig.subfigures(4, 1, height_ratios=height_ratios)
 
-    axsSecond = subfigs[1].subplots(4, 2,
+    axsSecond = subfigs[1].subplots(5, 2,
         gridspec_kw=dict(left=0.1, right=0.9,
                          bottom=0.1, top=0.95,
                          hspace=0.64, wspace=0.5))
@@ -759,6 +930,17 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     # plot legend 
     axsFirst.axis('off')
     axsFirst.legend(lines, legends, loc='center', ncol=3)
+    
+    # plot data (not grad)
+    plt.sca(axsSecond[4, 0])
+    plot_time_series(times, non_grad_locations, non_grad_data, plot_legend=False)
+    plt.title('Noisy data (not grad)')
+
+    # plot mean reconstructed data (not grad)
+    plt.sca(axsSecond[4, 1])
+    plot_time_series(times, non_grad_locations, non_grad_mean_recon_data, plot_legend=False)
+    plt.title('Mean reconstructed data (not grad)')
+
 
     # Plot trace
     x_samples.plot_trace(trace_idx_list, axes=axesThird)
@@ -877,7 +1059,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False, pixel_data=False):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -911,6 +1093,10 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 if NUTS_kwargs is not None:
                                                     args.NUTS_kwargs = NUTS_kwargs
                                                 args_list.append(args)
+                                                args.data_grad = data_grad
+                                                args.u0_from_data = u0_from_data
+                                                args.sampler_callback = sampler_callback
+                                                args.pixel_data = pixel_data
     return args_list
 
 def peclet_number(a, d, L):

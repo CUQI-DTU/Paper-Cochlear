@@ -27,7 +27,8 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     Args,\
     build_grids,\
     create_time_steps,\
-    read_experiment_data
+    read_experiment_data,\
+    Callback
 
 print('cuqi version:')
 print(cuqi.__version__)
@@ -75,7 +76,8 @@ print(tag)
 
 #%% STEP 2: Read time and location arrays
 #----------------------------------------
-real_times, real_locations, real_data, real_std_data = read_data_files(args)
+(real_times, real_locations, real_data, real_std_data,
+ diff_locations, real_data_diff, real_std_data_diff) = read_data_files(args)
 # The left boundary condition is given by the data  
 real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
 # The right boundary condition is given by the data (if rbc is not "zero")
@@ -88,13 +90,21 @@ elif args.rbc == 'fromDataClip':
 else:
     real_bc_r = None
 
+if args.u0_from_data:
+    real_u0 = real_data.reshape([len(real_locations), len(real_times)])[:,0]
+
 # locations, including added locations that can be used in synthetic 
 # case only
-locations = np.concatenate((real_locations, np.array(args.add_data_pts)))
-# reorder the locations
-locations = np.sort(locations)
+if len(args.add_data_pts) > 0:
+    locations = np.concatenate((real_locations, np.array(args.add_data_pts)))
+    # reorder the locations
+    locations = np.sort(locations)
+    diff_locations = locations[:-1]
+else:
+    locations = real_locations
 # times
 times = real_times
+
 
 #%% STEP 3: Create output directory
 #----------------------------------
@@ -116,6 +126,14 @@ coarsening_factor = 5
 n_grid_c = 20
 grid, grid_c, grid_c_fine, h, n_grid = build_grids(L, coarsening_factor, n_grid_c)
 
+#%% Step 4.1: Create u0
+#-----------------------
+if args.u0_from_data:
+    # interpolate real_u0 to the grid
+    u0 = np.interp(grid, locations, real_u0)
+else:
+    u0 = None
+
 #%% STEP 5: Create the PDE time steps array
 #------------------------------------------
 tau_max = 30*60 # Final time in sec
@@ -131,7 +149,8 @@ G_c = create_domain_geometry(grid_c, args.inference_type)
 #----------------------------
 PDE_form = create_PDE_form(real_bc_l, real_bc_r,
                            grid, grid_c, grid_c_fine, n_grid, h, times,
-                           args.inference_type)
+                           args.inference_type,
+                           u0=u0)
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
 PDE = TimeDependentLinearPDE(PDE_form,
@@ -139,11 +158,15 @@ PDE = TimeDependentLinearPDE(PDE_form,
                              grid_sol=grid,
                              method='backward_euler', 
                              grid_obs=locations,
-                             time_obs=times) 
+                             time_obs=times,
+                             data_grad=args.data_grad) 
 
 # STEP 9: Create the range geometry
 #----------------------------------
-G_cont2D = Continuous2D((locations, times))
+if args.data_grad:
+    G_cont2D = Continuous2D((diff_locations, times))
+else:
+    G_cont2D = Continuous2D((locations, times))
 
 # STEP 10: Create the CUQIpy PDE model
 #-------------------------------------
@@ -166,7 +189,8 @@ if args.data_type == 'syntheticFromDiffusion':
                                           grid_sol=grid,
                                           method='backward_euler', 
                                           grid_obs=locations,
-                                          time_obs=times) 
+                                          time_obs=times,
+                                          data_grad=args.data_grad) 
     G_c_var = create_domain_geometry(grid_c, temp_inf_type)    
     A_var_diff = PDEModel(
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
@@ -179,9 +203,14 @@ if args.data_type == 'syntheticFromDiffusion':
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
-s_noise = set_the_noise_std(
-    args.data_type, args.noise_level, exact_data,
-    real_data, real_std_data, G_cont2D)
+if args.data_grad:
+    s_noise = set_the_noise_std(
+        args.data_type, args.noise_level, exact_data,
+        real_data_diff, real_std_data_diff, G_cont2D)
+else:
+    s_noise = set_the_noise_std(
+        args.data_type, args.noise_level, exact_data,
+        real_data, real_std_data, G_cont2D)
 
 if args.sampler == 'NUTSWithGibbs':
     y = Gaussian(A(x), lambda s: 1/s, geometry=G_cont2D)
@@ -199,14 +228,17 @@ if args.data_type == 'syntheticFromDiffusion':
         data = y_temp.sample()
 
 elif args.data_type == 'real':
-    data = real_data
+    data = real_data_diff if args.data_grad else real_data
 else:
     raise Exception('Data type not supported')
 
 #%% STEP 15: Create the joint distribution
 #-----------------------------------------
 if args.sampler == 'NUTSWithGibbs':
-    s = cuqi.distribution.Gamma(1, 50000)
+    if args.data_grad:
+        s = cuqi.distribution.Gamma(1.2, 5)
+    else:
+        s = cuqi.distribution.Gamma(1, 50000)
     joint = JointDistribution(x, s, y)
 else:
     joint = JointDistribution(x, y)
@@ -217,11 +249,35 @@ posterior = joint(y=data) # condition on y=y_obs
 
 #%% STEP 17: Create the sampler and sample
 #-----------------------------------------
+# create the callback object
+callback_obj = Callback(
+                 dir_name=dir_name,
+                 exact_x=exact_x,
+                 exact_data=exact_data,
+                 data=data.reshape(G_cont2D.fun_shape),
+                 args=args, 
+                 locations=diff_locations if args.data_grad else locations,
+                 times=times, 
+                 non_grad_data=real_data.reshape((len(locations), len(real_times))),            
+                 non_grad_locations=locations,
+                 L=L)
+
 # time the sampling
 import time
 start_time = time.time()
+# print A
+print(A)
+# print A domain geometry
+print(A.domain_geometry)
+# print A range geometry
+print(A.range_geometry)
+
+callback = None
+if args.sampler_callback:
+    callback = callback_obj
+
 samples, my_sampler = sample_the_posterior(
-    args.sampler, posterior, G_c, args)
+    args.sampler, posterior, G_c, args, callback=callback)
 
 lapsed_time = time.time() - start_time
 #%% STEP 18: Plot the results
@@ -230,31 +286,7 @@ lapsed_time = time.time() - start_time
 x_samples = samples["x"] if args.sampler == 'NUTSWithGibbs' else samples
 s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
 
-mean_recon_data = \
-    A(x_samples.funvals.mean(), is_par=False).reshape([len(locations), len(times)])
-
-# if exact_data is not defined, set it to None
-if exact_data is not None:
-    exact_data = exact_data.reshape([len(locations), len(times)])
-fig = plot_experiment(exact_x, exact_data,
-                data.reshape([len(locations), len(times)]),
-                mean_recon_data,
-                x_samples,
-                s_samples,
-                args, locations, times, lapsed_time=lapsed_time, L=L)
-# Save figure
-fig.savefig(dir_name+'/experiment_'+tag+'.png')
-
-#%% STEP 19: Save the results
-#----------------------------
-save_experiment_data(dir_name, exact_x, 
-                     exact_data,
-                     data.reshape([len(locations), len(times)]),
-                     mean_recon_data,
-                     x_samples,
-                     s_samples,
-                     args, locations, times, lapsed_time,
-                     sampler=my_sampler)
+callback_obj(sampler=my_sampler, sample_index=None, s_samples=s_samples, plot_anyway=True)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)
