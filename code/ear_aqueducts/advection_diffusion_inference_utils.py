@@ -664,6 +664,8 @@ def set_the_noise_std(
             raise Exception('Noise level not supported')
         ## Noise standard deviation 
         if data_type == 'syntheticFromDiffusion':
+            if is_grad_data:
+                raise Exception('Noise level not supported yet for gradient data and synthetic data')
             s_noise = noise_level \
                       *np.linalg.norm(exact_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
