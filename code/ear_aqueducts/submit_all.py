@@ -31,8 +31,11 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #version = "paperV3CARealDiff"
 #version = "paperV3CASTRealDiff"
 #version = "paperV3CARealAdvDiff"
+# paperV4CARealDiff_GMRF_gibbs_scale_all_pixel3 IS NOT GMRF
 
-version = "paperV4CARealDiff"
+version = "paperV4CASynthDiff_Gauess_gibbs_scale_all"
+#version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all"
+
 #version = "paperV4CARealAdvDiff"
 #version = "paperV4CARealDiffPixel"
 #version = "paperV4CARealAdvDiffPixel"
@@ -547,7 +550,7 @@ if version == "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15":
     sampler_callback = True
     pixel_data = True
 
-if version == "paperV4CARealDiff":
+if version == "paperV4CARealDiff_Gauess_gibbs_scale_all7":
 
     # Array of all animals
     animals = all_animals()
@@ -555,22 +558,49 @@ if version == "paperV4CARealDiff":
     ears = all_ears()
     num_ST_list = [0]
 
-    sampler = ['MH']
-    Ns = [20] # try 10000000 for MH
-    Nb = [10]
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
     rbc = ['fromDataClip']
     unknown_par_types = ['constant'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
-    noise_levels = ["estimated"] # this noise level will not be used here
-    NUTS_kwargs = {"max_depth":5}
+    noise_levels = [0.2] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
     data_grad = True
     u0_from_data = True
     sampler_callback = True
     pixel_data = False
-    adaptive = False
+    adaptive = True
+
+if version == "paperV4CARealAdvDiff_Gauess_gibbs_scale_all7":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.2] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
 
 if version == "paperV4CARealAdvDiff":
 
@@ -581,8 +611,8 @@ if version == "paperV4CARealAdvDiff":
     num_ST_list = [0]
 
     sampler = ['NUTS']
-    Ns = [2] # try 10000000 for MH
-    Nb = [1]
+    Ns = [1000] # try 10000000 for MH
+    Nb = [20]
     data_type = 'real'
     true_a = [0.1] # funval (value not used)
     inference_type = ['advection_diffusion']
