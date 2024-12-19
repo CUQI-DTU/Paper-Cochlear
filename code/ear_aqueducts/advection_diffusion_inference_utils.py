@@ -190,6 +190,9 @@ def parse_commandline_args(myargs):
                                            'step',
                                            'sampleMean',
                                             'custom_1',
+                                            'synth_diff1.npz',
+                                            'synth_diff2.npz',
+                                            'synth_diff3.npz'
                                            ],
                         default=arg_obj.unknown_par_type,
                         help='Type of unknown parameter, diffusion coefficient')
@@ -219,7 +222,7 @@ def parse_commandline_args(myargs):
     parser.add_argument('-noise_level', metavar='noise_level', 
                         type=str,
                         default=arg_obj.noise_level,
-                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to "estimated" to use the estimated noise level, or set to a float representing the noise level (e.g 0.1 for 10% noise)')
+                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to "estimated" to use the estimated noise level, or set to a float representing the noise level (e.g 0.1 for 10% noise). Noise level can also be a string that starts with "std_" then the std value. For example "std_5" means std of value 5') 
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
@@ -607,6 +610,13 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         if a is not None:
             a = np.sqrt(a)
 
+    elif unknown_par_type.endswith('.npz'):
+        # Read data from npz file
+        print('Reading data from: ', unknown_par_type)
+        exact_x = np.load("synth_diff/"+unknown_par_type)['arr_0']
+        is_par = False
+
+
     ## append "a" value to the end
     if a is not None and unknown_par_type != 'constant':
         exact_x = np.append(exact_x, a)
@@ -683,6 +693,9 @@ def set_the_noise_std(
                                                        )
         s_noise = np.diag(std_matrix)
 
+    elif noise_level.startswith('std_'):
+        std_value = float(noise_level.split('_')[1])
+        s_noise = std_value*np.ones(G_cont2D.par_dim)
     else:
         try:
             noise_level = float(noise_level)
