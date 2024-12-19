@@ -256,6 +256,7 @@ if args.data_type == 'syntheticFromDiffusion':
         data = y_temp(s=1/s_noise**2).sample()
     else:
         data = y_temp.sample()
+    #data = data.reshape(G_cont2D.fun_shape)
 
 elif args.data_type == 'real':
     data = real_data_diff if args.data_grad else real_data
@@ -283,7 +284,7 @@ posterior = joint(y=data) # condition on y=y_obs
 callback_obj = Callback(
                  dir_name=dir_name,
                  exact_x=exact_x,
-                 exact_data=exact_data,
+                 exact_data=exact_data.reshape(G_cont2D.fun_shape),
                  data=data.reshape(G_cont2D.fun_shape),
                  args=args, 
                  locations=diff_locations if args.data_grad else locations,
