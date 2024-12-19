@@ -483,15 +483,41 @@ def create_prior_distribution(G_c, inference_type):
     if inference_type == 'constant':
         prior = Gaussian(np.sqrt(400), 100, geometry=G_c)
     elif inference_type == 'heterogeneous':
-        prior = GMRF(
-            np.ones(G_c.par_dim)*np.sqrt(300),
-            0.2,
-            geometry=G_c,
-            bc_type='neumann')
+        prior = Gaussian(20, 5**2, geometry=G_c) 
+        #prior = GMRF(
+        #    np.ones(G_c.par_dim)*np.sqrt(300),
+        #    0.2,
+        #    geometry=G_c,
+        #    bc_type='neumann')
+
+        #prior = Gaussian(50, 10**2, geometry=G_c)
+        # Gauss3 Gaussian(30, 10**2, geometry=G_c)
+        # Gauss4 Gaussian(20, 5**2, geometry=G_c) 
+            #np.ones(G_c.par_dim)*np.sqrt(600),
+            #0.04,
+            #geometry=G_c,
+            #bc_type='neumann')
+    # 5 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(1000), 0.05, geometry=G_c, bc_type='neumann')
+    # 6 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(1000), 0.04, geometry=G_c, bc_type='neumann')
+    # 7 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(600), 0.04, geometry=G_c, bc_type='neumann')
+    # GMRF 2:         prior = GMRF(
+    #        np.ones(G_c.par_dim)*np.sqrt(300),
+    #        0.1,
+    #        geometry=G_c,
+    #        bc_type='neumann') 
     elif inference_type == 'advection_diffusion':
-        prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
-            0.2,
-            bc_type='neumann')
+        # Gauss4 Gaussian(np.ones(G_c.par_dim-1)*20, 5**2)
+        # Gauss7 Gaussian(np.ones(G_c.par_dim-1)*20, 10**2)
+        prior1 = Gaussian(np.ones(G_c.par_dim-1)*20, 5**2)
+        # GMRF2 prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
+        #    0.1,
+        #    bc_type='neumann')
+        #prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
+        #    0.2,
+        #    bc_type='neumann')
+        # Gibb gmrf true 6: prec 0.2
+
+
         # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
         # the square root of advection speed that results in a peclet number
         # of 1)
