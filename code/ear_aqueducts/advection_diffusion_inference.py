@@ -71,6 +71,8 @@ else:
 print('Arguments:')
 print(args)
 
+if args.pixel_data:
+    args.num_CA = 19
 if args.sampler == 'NUTSWithGibbs':
     args.NUTS_kwargs["enable_FD"] = True
 
@@ -81,12 +83,14 @@ print(tag)
 
 #%% STEP 2: Read time and location arrays
 #----------------------------------------
+
 (real_times, real_locations, real_data, real_std_data,
  diff_locations, real_data_diff, real_std_data_diff) = read_data_files(args)
 
 # read all data as well num_ST = 4
 cp_args = deepcopy(args)
 cp_args.num_ST = 4
+cp_args.num_CA = 5
 cp_args.pixel_data = False
 (real_times_all, real_locations_all, real_data_all, real_std_data_all,
     diff_locations_all, real_data_diff_all, real_std_data_diff_all) = read_data_files(cp_args)
@@ -133,7 +137,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-parent_dir = 'results/'+args.version
+parent_dir = 'results_dec19/'+args.version
 dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
