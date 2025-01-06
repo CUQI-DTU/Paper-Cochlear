@@ -212,7 +212,7 @@ exact_data = None
 if args.data_type == 'syntheticFromDiffusion':
     temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
     PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
-                                   n_grid, h, times, temp_inf_type) 
+                                   n_grid, h, times, temp_inf_type, u0=u0) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
