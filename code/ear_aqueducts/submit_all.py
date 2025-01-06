@@ -44,7 +44,7 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #Ns_s = [1000]
 #Nb_s = [10]
 
-version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1"
+version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp"
 #version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2"
 #version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3"
 
@@ -684,7 +684,7 @@ if version == "paperV4CARealAdvDiffPixel":
     sampler_callback = True
     pixel_data = True
 
-if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1":
+if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp":
     # Array of all animals
     animals = [all_animals()[0]]
     # Array of all ears
@@ -693,18 +693,18 @@ if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1":
 
 
     sampler = ['NUTSWithGibbs']
-    Ns = [2] # try 10000000 for MH
-    Nb = [2]
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
     data_type = 'syntheticFromDiffusion'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
     rbc = ['fromDataClip']
     unknown_par_types = ['synth_diff1.npz'] # this value is not used in this case
     unknown_par_values = [[100.0]] # this value is not used in this case
-    noise_levels = ['std_3'] # this noise level will not be used here
+    noise_levels = ['std_0.1'] # this noise level will not be used here
     NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
     data_grad = True
-    u0_from_data = True
+    u0_from_data = False
     sampler_callback = True
     pixel_data = False
     adaptive = True
@@ -718,8 +718,8 @@ if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2":
 
 
     sampler = ['NUTSWithGibbs']
-    Ns = [2] # try 10000000 for MH
-    Nb = [2]
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
     data_type = 'syntheticFromDiffusion'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
@@ -743,8 +743,8 @@ if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3":
 
 
     sampler = ['NUTSWithGibbs']
-    Ns = [2] # try 10000000 for MH
-    Nb = [2]
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
     data_type = 'syntheticFromDiffusion'
     true_a = [0.1] # funval (value not used)
     inference_type = ['heterogeneous']
