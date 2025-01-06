@@ -622,7 +622,9 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = np.append(exact_x, a)
     exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
-    return exact_x, exact_data
+    exact_nongrad_data = A.pde._solution_obs
+    return exact_x, exact_data, exact_nongrad_data
+
 
 def estimate_noise_std(locations, times, real_data, real_std_data):
     """Function to estimate the noise standard deviation. """
