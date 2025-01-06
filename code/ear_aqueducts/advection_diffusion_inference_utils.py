@@ -581,7 +581,8 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
         is_par = True
         if a is not None:
-            a = np.sqrt(a)
+            raise NotImplementedError
+            #a = np.sqrt(a)
 
     elif unknown_par_type == 'custom_1':
         #TODO: this if else is repeated (refactor)
@@ -608,7 +609,8 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = f(grid_c)
         is_par = True
         if a is not None:
-            a = np.sqrt(a)
+            raise NotImplementedError
+            #a = np.sqrt(a)
 
     elif unknown_par_type.endswith('.npz'):
         # Read data from npz file
