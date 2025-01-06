@@ -45,8 +45,8 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 #Nb_s = [10]
 
 version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp"
-#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2"
-#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3"
+#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp"
+#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3_zerou0_update_hp"
 
 #version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp"
 #version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp"
