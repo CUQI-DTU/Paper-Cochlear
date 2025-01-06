@@ -48,16 +48,19 @@ if len(sys.argv) <= 2:
     args.inference_type = 'advection_diffusion'
     args.unknown_par_type = 'custom_1'
     #args.unknown_par_value = [100.0]
-    args.sampler = 'NUTSWithGibbs'
-    args.Ns = 5
-    args.Nb = 1
-    args.num_ST = 1
-    args.noise_level = 0.1
+    args.sampler = 'NUTS'
+    args.Ns = 10
+    args.Nb = 5
+    args.num_ST = 0
+    args.noise_level = "estimated"
     args.true_a = 0.8 # funval
-    args.rbc = 'fromData'
+    args.rbc = 'fromDataClip'
     args.NUTS_kwargs['max_depth'] = 5
     args.version = 'results_temp_rhs'
     args.adaptive = True
+    args.u0_from_data = True
+    args.data_grad = True
+    args.pixel_data = False
 
 else:
     args = parse_commandline_args(sys.argv[1:])
@@ -65,7 +68,11 @@ else:
     #args_predefined = Args()
     #args.NUTS_kwargs = args_predefined.NUTS_kwargs
 
+print('Arguments:')
+print(args)
 
+if args.pixel_data:
+    args.num_CA = 19
 if args.sampler == 'NUTSWithGibbs':
     args.NUTS_kwargs["enable_FD"] = True
 
@@ -76,22 +83,45 @@ print(tag)
 
 #%% STEP 2: Read time and location arrays
 #----------------------------------------
+
 (real_times, real_locations, real_data, real_std_data,
  diff_locations, real_data_diff, real_std_data_diff) = read_data_files(args)
+
+# read all data as well num_ST = 4
+cp_args = deepcopy(args)
+cp_args.num_ST = 4
+cp_args.num_CA = 5
+cp_args.pixel_data = False
+(real_times_all, real_locations_all, real_data_all, real_std_data_all,
+    diff_locations_all, real_data_diff_all, real_std_data_diff_all) = read_data_files(cp_args)
 # The left boundary condition is given by the data  
 real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
+print("real_bc_l (before)")
+print(real_bc_l)
+real_bc_l[real_bc_l<0] = 0
+print("real_bc_l (after)")
+print(real_bc_l)
 # The right boundary condition is given by the data (if rbc is not "zero")
 if args.rbc == 'fromData':
-    real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    raise Exception('Right boundary condition from data not supported')
 elif args.rbc == 'fromDataClip':
     real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
+    print("real_bc_r (before)")
+    print(real_bc_r)
     real_bc_r[real_bc_r<0] = 0
+    print("real_bc_r (after)")
+    print(real_bc_r)
 
 else:
     real_bc_r = None
 
 if args.u0_from_data:
     real_u0 = real_data.reshape([len(real_locations), len(real_times)])[:,0]
+    print("real_u0 (before)")
+    print(real_u0)
+    real_u0[real_u0<0] = 0
+    print("real_u0 (after)")
+    print(real_u0)
 
 # locations, including added locations that can be used in synthetic 
 # case only
@@ -105,10 +135,9 @@ else:
 # times
 times = real_times
 
-
 #%% STEP 3: Create output directory
 #----------------------------------
-parent_dir = 'results/'+args.version
+parent_dir = 'results_jan6/'+args.version
 dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
@@ -183,7 +212,7 @@ exact_data = None
 if args.data_type == 'syntheticFromDiffusion':
     temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
     PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
-                                   n_grid, h, times, temp_inf_type) 
+                                   n_grid, h, times, temp_inf_type, u0=u0) 
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
@@ -196,21 +225,22 @@ if args.data_type == 'syntheticFromDiffusion':
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
 
 
-    exact_x, exact_data = create_exact_solution_and_data(
+    exact_x, exact_data, exact_nongrad_data = create_exact_solution_and_data(
         A_var_diff, args.unknown_par_type,
         args.unknown_par_value, args.true_a if args.inference_type == 'advection_diffusion' else None,
         grid_c=grid_c)
 
 #%% STEP 13: Create the data distribution
 #----------------------------------------
-if args.data_grad:
-    s_noise = set_the_noise_std(
+
+s_noise = set_the_noise_std(
         args.data_type, args.noise_level, exact_data,
-        real_data_diff, real_std_data_diff, G_cont2D)
-else:
-    s_noise = set_the_noise_std(
-        args.data_type, args.noise_level, exact_data,
-        real_data, real_std_data, G_cont2D)
+        real_data, real_std_data, G_cont2D,
+        is_grad_data=args.data_grad, times=times, locations=locations, real_data_diff=real_data_diff,
+        real_data_all=real_data_all, real_std_data_all=real_std_data_all, real_locations_all=real_locations_all)
+
+print('s_noise')
+print(s_noise)
 
 if args.sampler == 'NUTSWithGibbs':
     y = Gaussian(A(x), lambda s: 1/s, geometry=G_cont2D)
@@ -226,6 +256,7 @@ if args.data_type == 'syntheticFromDiffusion':
         data = y_temp(s=1/s_noise**2).sample()
     else:
         data = y_temp.sample()
+    #data = data.reshape(G_cont2D.fun_shape)
 
 elif args.data_type == 'real':
     data = real_data_diff if args.data_grad else real_data
@@ -236,7 +267,13 @@ else:
 #-----------------------------------------
 if args.sampler == 'NUTSWithGibbs':
     if args.data_grad:
-        s = cuqi.distribution.Gamma(1.2, 5)
+        if 'synthetic' in args.data_type:
+            s = cuqi.distribution.Gamma(0.9, 0.5)
+        elif args.data_type == 'real':
+            s = cuqi.distribution.Gamma(1.2, 5)
+        else:
+            raise NotImplementedError
+
     else:
         s = cuqi.distribution.Gamma(1, 50000)
     joint = JointDistribution(x, s, y)
@@ -253,12 +290,12 @@ posterior = joint(y=data) # condition on y=y_obs
 callback_obj = Callback(
                  dir_name=dir_name,
                  exact_x=exact_x,
-                 exact_data=exact_data,
+                 exact_data=exact_data.reshape(G_cont2D.fun_shape),
                  data=data.reshape(G_cont2D.fun_shape),
                  args=args, 
                  locations=diff_locations if args.data_grad else locations,
                  times=times, 
-                 non_grad_data=real_data.reshape((len(locations), len(real_times))),            
+                 non_grad_data=real_data.reshape((len(locations), len(real_times))) if (args.data_type == 'real') else exact_nongrad_data.reshape((len(locations), len(real_times))),  
                  non_grad_locations=locations,
                  L=L)
 

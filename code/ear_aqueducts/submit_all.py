@@ -30,10 +30,28 @@ from advection_diffusion_inference_utils import all_animals, all_ears, Args,\
 # V3
 #version = "paperV3CARealDiff"
 #version = "paperV3CASTRealDiff"
-version = "paperV3CARealAdvDiff"
+#version = "paperV3CARealAdvDiff"
+# paperV4CARealDiff_GMRF_gibbs_scale_all_pixel3 IS NOT GMRF
+
+
+
+#version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all"
+
+#version = "paperV4CARealAdvDiff"
+#version = "paperV4CARealDiffPixel"
+#version = "paperV4CARealAdvDiffPixel"
 
 #Ns_s = [1000]
 #Nb_s = [10]
+
+version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp"
+#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp"
+#version = "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3_zerou0_update_hp"
+
+#version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp"
+#version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp"
+#version = "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff3_zerou0_update_hp"
+
 noise_levels = ["fromDataVar", "fromDataAvg", "avgOverTime", 0.1, 0.2]
 add_data_pts_list = [[]]
 inference_type = 'heterogeneous'
@@ -542,9 +560,283 @@ if version == "paperV2CARealDiff_CArbc_clip_grad_data_temp_Nov15":
     sampler_callback = True
     pixel_data = True
 
+if version == "paperV4CARealDiff_Gauess_gibbs_scale_all7":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.2] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CARealAdvDiff_Gauess_gibbs_scale_all7":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [2000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.2] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CARealAdvDiff":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [1000] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ["estimated"] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = False
+
+if version == "paperV4CARealDiffPixel":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [2] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.3] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = True
+
+if version == "paperV4CARealAdvDiffPixel":
+
+    # Array of all animals
+    animals = all_animals()
+    # Array of all ears
+    ears = all_ears()
+    num_ST_list = [0]
+
+    sampler = ['NUTS']
+    Ns = [2] # try 10000000 for MH
+    Nb = [1]
+    data_type = 'real'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['constant'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = [0.3] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":5}
+    data_grad = True
+    u0_from_data = True
+    sampler_callback = True
+    pixel_data = True
+
+if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[1]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff1.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[2]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff2.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CASynthDiff_Gauess_gibbs_scale_all_diff3_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[1]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.1] # funval (value not used)
+    inference_type = ['heterogeneous']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff3.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff1_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[1]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.5, 2, -1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff1.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff2_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[2]]
+    # Array of all ears
+    ears = [all_ears()[0]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.5, 2, -1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff2.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
+if version == "paperV4CASynthAdvDiff_Gauess_gibbs_scale_all_diff3_zerou0_update_hp":
+    # Array of all animals
+    animals = [all_animals()[0]]
+    # Array of all ears
+    ears = [all_ears()[1]]
+    num_ST_list = [0]
+
+
+    sampler = ['NUTSWithGibbs']
+    Ns = [200] # try 10000000 for MH
+    Nb = [20]
+    data_type = 'syntheticFromDiffusion'
+    true_a = [0.5, 2, -1] # funval (value not used)
+    inference_type = ['advection_diffusion']
+    rbc = ['fromDataClip']
+    unknown_par_types = ['synth_diff3.npz'] # this value is not used in this case
+    unknown_par_values = [[100.0]] # this value is not used in this case
+    noise_levels = ['std_0.1'] # this noise level will not be used here
+    NUTS_kwargs = {"max_depth":10, "step_size": 0.1}
+    data_grad = True
+    u0_from_data = False
+    sampler_callback = True
+    pixel_data = False
+    adaptive = True
+
 # Main command to run the job
 main_command = "python advection_diffusion_inference.py"
-arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs, data_grad, u0_from_data, sampler_callback, pixel_data)
+arg_list = create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, sampler, Ns, Nb, inference_type, true_a, rbc, NUTS_kwargs, data_grad, u0_from_data, sampler_callback, pixel_data, adaptive)
 print("length of arg_list: ", len(arg_list))
 for args in arg_list:
     cmd = create_command(main_command, args)

@@ -47,7 +47,7 @@ class Args:
         self.NUTS_kwargs = {'max_depth': 10}
         self.true_a = None
         self.rbc = "zero"
-        self.adaptive = True
+        self.adaptive = False
         self.data_grad = False
         self.u0_from_data = False
         self.sampler_callback = False
@@ -190,6 +190,9 @@ def parse_commandline_args(myargs):
                                            'step',
                                            'sampleMean',
                                             'custom_1',
+                                            'synth_diff1.npz',
+                                            'synth_diff2.npz',
+                                            'synth_diff3.npz'
                                            ],
                         default=arg_obj.unknown_par_type,
                         help='Type of unknown parameter, diffusion coefficient')
@@ -219,7 +222,7 @@ def parse_commandline_args(myargs):
     parser.add_argument('-noise_level', metavar='noise_level', 
                         type=str,
                         default=arg_obj.noise_level,
-                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to a float representing the noise level')
+                        help='Noise level for data, set to "fromDataVar" to read noise level from data that varies for each data point and set to "fromDataAvg" to compute average noise level from data and use it for all data points, set to "avgOverTime" to compute average noise level over time for each location, set to "estimated" to use the estimated noise level, or set to a float representing the noise level (e.g 0.1 for 10% noise). Noise level can also be a string that starts with "std_" then the std value. For example "std_5" means std of value 5') 
     parser.add_argument('-add_data_pts', metavar='add_data_pts',
                         nargs='*',
                         type=float,
@@ -240,29 +243,19 @@ def parse_commandline_args(myargs):
     parser.add_argument('-rbc', metavar='rbc', type=str, choices=['zero', 'fromData', 'fromDataClip'],
                         default=arg_obj.rbc,
                         help='right boundary condition')
-    parser.add_argument('-adaptive', metavar='adaptive', type=bool,
-                        default=arg_obj.adaptive,
-                        help='static adaptive time step size, fine at the beginning'+\
-                        'and coarse at the end, default is True')
+    parser.add_argument('--adaptive', action='store_true',
+                        help='adaptive if passed, the adaptive time step is used')
     parser.add_argument('-NUTS_kwargs', metavar='NUTS_kwargs', type=str,
                         default=arg_obj.NUTS_kwargs,
                         help='kwargs for NUTS sampler')
-    parser.add_argument('-data_grad', metavar='data_grad', type=bool,
-                        default=arg_obj.data_grad,
-                        help='data_grad is set to True if we want to use the '+\
-                             'gradient of the data to be used in the likelihood'+\
-                             'function instead of the data itself')
-    parser.add_argument('-u0_from_data', metavar='u0_from_data', type=bool,
-                        default=arg_obj.u0_from_data,
-                        help='u0_from_data is set to True if we want to use the '+\
-                             'initial condition from the data')
-    parser.add_argument('-sampler_callback', metavar='sampler_callback', type=bool,
-                        default=arg_obj.sampler_callback,
-                        help='sampler_callback is set to True if we want to pass'+\
-                                'a callback function to the sampler')
-    parser.add_argument('-pixel_data', metavar='pixel_data', type=bool,
-                        default=arg_obj.pixel_data,
-                        help='pixel_data is set to True if we want to use the pixel data')
+    parser.add_argument('--data_grad', action='store_true',
+                        help='data_grad if passed, the data is gradient data')
+    parser.add_argument('--u0_from_data', action='store_true',
+                        help='u0_from_data if passed, the initial condition is set using the data')
+    parser.add_argument('--sampler_callback', action='store_true',
+                        help='sampler_callback if passed, the sampler callback is used')
+    parser.add_argument('--pixel_data',  action='store_true',
+                        help='pixel_data if passed, the data is pixel data')
 
     args = parser.parse_args(myargs)
     #parser.parse_known_args()[0]
@@ -493,15 +486,41 @@ def create_prior_distribution(G_c, inference_type):
     if inference_type == 'constant':
         prior = Gaussian(np.sqrt(400), 100, geometry=G_c)
     elif inference_type == 'heterogeneous':
-        prior = GMRF(
-            np.ones(G_c.par_dim)*np.sqrt(300),
-            0.2,
-            geometry=G_c,
-            bc_type='neumann')
+        prior = Gaussian(20, 5**2, geometry=G_c) 
+        #prior = GMRF(
+        #    np.ones(G_c.par_dim)*np.sqrt(300),
+        #    0.2,
+        #    geometry=G_c,
+        #    bc_type='neumann')
+
+        #prior = Gaussian(50, 10**2, geometry=G_c)
+        # Gauss3 Gaussian(30, 10**2, geometry=G_c)
+        # Gauss4 Gaussian(20, 5**2, geometry=G_c) 
+            #np.ones(G_c.par_dim)*np.sqrt(600),
+            #0.04,
+            #geometry=G_c,
+            #bc_type='neumann')
+    # 5 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(1000), 0.05, geometry=G_c, bc_type='neumann')
+    # 6 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(1000), 0.04, geometry=G_c, bc_type='neumann')
+    # 7 x = GMRF(np.ones(G_c.par_dim)*np.sqrt(600), 0.04, geometry=G_c, bc_type='neumann')
+    # GMRF 2:         prior = GMRF(
+    #        np.ones(G_c.par_dim)*np.sqrt(300),
+    #        0.1,
+    #        geometry=G_c,
+    #        bc_type='neumann') 
     elif inference_type == 'advection_diffusion':
-        prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
-            0.2,
-            bc_type='neumann')
+        # Gauss4 Gaussian(np.ones(G_c.par_dim-1)*20, 5**2)
+        # Gauss7 Gaussian(np.ones(G_c.par_dim-1)*20, 10**2)
+        prior1 = Gaussian(np.ones(G_c.par_dim-1)*20, 5**2)
+        # GMRF2 prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
+        #    0.1,
+        #    bc_type='neumann')
+        #prior1 = GMRF(np.ones(G_c.par_dim-1)*np.sqrt(300),
+        #    0.2,
+        #    bc_type='neumann')
+        # Gibb gmrf true 6: prec 0.2
+
+
         # TODO: change the "a" prior mean and std to be 0 and 0.752 (which is
         # the square root of advection speed that results in a peclet number
         # of 1)
@@ -562,7 +581,8 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = exact_x.to_numpy() if isinstance(exact_x, CUQIarray) else exact_x
         is_par = True
         if a is not None:
-            a = np.sqrt(a)
+            raise NotImplementedError
+            #a = np.sqrt(a)
 
     elif unknown_par_type == 'custom_1':
         #TODO: this if else is repeated (refactor)
@@ -589,32 +609,97 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = f(grid_c)
         is_par = True
         if a is not None:
-            a = np.sqrt(a)
+            raise NotImplementedError
+            #a = np.sqrt(a)
+
+    elif unknown_par_type.endswith('.npz'):
+        # Read data from npz file
+        print('Reading data from: ', unknown_par_type)
+        exact_x = np.load("synth_diff/"+unknown_par_type)['arr_0']
+        is_par = False
+
 
     ## append "a" value to the end
     if a is not None and unknown_par_type != 'constant':
         exact_x = np.append(exact_x, a)
     exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
-    return exact_x, exact_data
+    exact_nongrad_data = A.pde._solution_obs
+    return exact_x, exact_data, exact_nongrad_data
+
+
+def estimate_noise_std(locations, times, real_data, real_std_data):
+    """Function to estimate the noise standard deviation. """
+
+    data_for_noise_estimation_per_case = []
+    std_data_for_noise_estimation_per_case = []
+
+    for j, loc in enumerate(locations):
+        for k, t in enumerate(times/60):
+            orig_data = real_data[j, k]
+            orig_std_data = real_std_data[j, k]
+
+            # if data below line (500, 0) to (3000, 15), add to noise estimation
+            line_eq = lambda loc_x:  15/2500*(loc_x-500)
+            # draw line
+            if t < line_eq(loc):
+                data_for_noise_estimation_per_case.append(orig_data)
+                std_data_for_noise_estimation_per_case.append(orig_std_data)
+    
+    return np.sqrt(np.average(np.array(std_data_for_noise_estimation_per_case)**2))
+
+def estimate_grad_data_noise_std(data_noise_std, locations, data_diff):
+    std_not_scaled = np.sqrt(2)*data_noise_std
+    diff_locations = np.diff(locations)
+    std_per_loc = np.zeros_like(data_diff)
+    # loop over rows of location factor
+    for i in range(std_per_loc.shape[0]):
+        std_per_loc[i, :] = std_not_scaled/diff_locations[i]
+    std_matrix = np.diag(std_per_loc.flatten())
+    return std_not_scaled, std_matrix
 
 def set_the_noise_std(
         data_type, noise_level, exact_data,
-        real_data, real_std_data, G_cont2D):
+        real_data, real_std_data, G_cont2D,
+        is_grad_data, times, locations, real_data_diff,
+        real_data_all, real_std_data_all, real_locations_all):
     """Function to set the noise standard deviation. """
     # Use noise levels read from the file
     if noise_level == "fromDataVar":
         ## Noise standard deviation
+        if is_grad_data:
+            raise Exception('Noise level "fromDataVar" not supported yet for gradient data')
         s_noise = real_std_data
     # Use noise level specified in the command line
     elif noise_level == "fromDataAvg":
+        if is_grad_data:
+            raise Exception('Noise level "fromDataAvg" not supported yet for gradient data')
         s_noise = np.mean(real_std_data)
 
     elif noise_level == "avgOverTime":
+        if is_grad_data:
+            raise Exception('Noise level "avgOverTime" not supported yet for gradient data')
         s_noise = real_std_data.reshape(G_cont2D.fun_shape)
         s_noise = np.mean(s_noise, axis=1)
         s_noise = np.repeat(s_noise, G_cont2D.fun_shape[1])
+    elif noise_level == "estimated":
+        if not is_grad_data:
+            raise Exception('Noise level not supported yet for non gradient data')
+        estimated_noise_std = estimate_noise_std(
+            locations=real_locations_all,
+            times=times,
+            real_data=real_data_all.reshape((len(real_locations_all),-1)),
+            real_std_data=real_std_data_all.reshape((len(real_locations_all),-1)))
+        
+        std_scaled, std_matrix = estimate_grad_data_noise_std(data_noise_std=estimated_noise_std,
+                                                       locations=locations,
+                                                       data_diff=real_data_diff.reshape((len(locations)-1,-1))
+                                                       )
+        s_noise = np.diag(std_matrix)
 
+    elif noise_level.startswith('std_'):
+        std_value = float(noise_level.split('_')[1])
+        s_noise = std_value*np.ones(G_cont2D.par_dim)
     else:
         try:
             noise_level = float(noise_level)
@@ -622,12 +707,15 @@ def set_the_noise_std(
             raise Exception('Noise level not supported')
         ## Noise standard deviation 
         if data_type == 'syntheticFromDiffusion':
+            if is_grad_data:
+                raise Exception('Noise level not supported yet for gradient data and synthetic data')
             s_noise = noise_level \
                       *np.linalg.norm(exact_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
         elif data_type == 'real':
+            used_data = real_data if not is_grad_data else real_data_diff
             s_noise = noise_level \
-                      *np.linalg.norm(real_data) \
+                      *np.linalg.norm(used_data) \
                       *np.sqrt(1/G_cont2D.par_dim)
         else:
             raise Exception('Data type not supported')
@@ -1059,7 +1147,7 @@ def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
 
 
-def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False, pixel_data=False):
+def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list, unknown_par_types, unknown_par_values, data_type, version, samplers, Ns_s, Nb_s, inference_type_s=['heterogeneous'], true_a_s=None, rbc_s=None, NUTS_kwargs = None, data_grad=False, u0_from_data=False, sampler_callback=False, pixel_data=False, adaptive=False):
     args_list = []
     # Loop over all animals, ears, noise levels and num_ST
     for animal in animals:
@@ -1097,7 +1185,10 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
                                                 args.u0_from_data = u0_from_data
                                                 args.sampler_callback = sampler_callback
                                                 args.pixel_data = pixel_data
+                                                args.adaptive = adaptive
     return args_list
+
+
 
 def peclet_number(a, d, L):
     """Function to compute the peclet number.
