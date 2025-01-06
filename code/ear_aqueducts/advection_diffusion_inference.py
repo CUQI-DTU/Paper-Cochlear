@@ -137,7 +137,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-parent_dir = 'results_dec19/'+args.version
+parent_dir = 'results_jan6/'+args.version
 dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
@@ -225,7 +225,7 @@ if args.data_type == 'syntheticFromDiffusion':
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
 
 
-    exact_x, exact_data = create_exact_solution_and_data(
+    exact_x, exact_data, exact_nongrad_data = create_exact_solution_and_data(
         A_var_diff, args.unknown_par_type,
         args.unknown_par_value, args.true_a if args.inference_type == 'advection_diffusion' else None,
         grid_c=grid_c)
@@ -267,7 +267,13 @@ else:
 #-----------------------------------------
 if args.sampler == 'NUTSWithGibbs':
     if args.data_grad:
-        s = cuqi.distribution.Gamma(1.2, 5)
+        if 'synthetic' in args.data_type:
+            s = cuqi.distribution.Gamma(0.9, 0.5)
+        elif args.data_type == 'real':
+            s = cuqi.distribution.Gamma(1.2, 5)
+        else:
+            raise NotImplementedError
+
     else:
         s = cuqi.distribution.Gamma(1, 50000)
     joint = JointDistribution(x, s, y)
@@ -289,7 +295,7 @@ callback_obj = Callback(
                  args=args, 
                  locations=diff_locations if args.data_grad else locations,
                  times=times, 
-                 non_grad_data=real_data.reshape((len(locations), len(real_times))),            
+                 non_grad_data=real_data.reshape((len(locations), len(real_times))) if (args.data_type == 'real') else exact_nongrad_data.reshape((len(locations), len(real_times))),  
                  non_grad_locations=locations,
                  L=L)
 
