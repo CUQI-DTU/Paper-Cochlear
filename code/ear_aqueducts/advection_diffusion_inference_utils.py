@@ -771,22 +771,58 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
         posterior_samples_burnthin = posterior_samples
 
     else:
-        raise Exception('Unsuppported sampler')
+        raise Exception('Unsupported sampler')
     
     return posterior_samples_burnthin, my_sampler
 
-def plot_time_series(times, locations, data, plot_legend=True):
+def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_time', d3_alpha=0, marker=None, linestyle='-', colormap=None):
     # Plot data
-    color = ['r', 'g', 'b', 'k', 'm', 'c']
-    legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
-    lines = []
-    for i in range(len(locations)):
-        lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)])[0])
+    # plot type can be 'over_time' or 'over_location' or 'surface'
+    if colormap is None:
+        color = ['r', 'g', 'b', 'k', 'm', 'c', 'brown']
+    else:
+        no_colors = len(locations) if plot_type == 'over_time' else len(times)
+        color = colormap(np.linspace(0, 1, no_colors))
+    if plot_type == 'over_time':
+
+        legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
+        lines = []
+        for i in range(len(locations)):
+            lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
+        
+        if plot_legend:
+            plt.legend(lines, legends)
+        plt.xlabel('Time (min)')
+        plt.ylabel('Concentration')
+        
+
+    elif plot_type == 'over_location':
+        legends = ['time = '+"{:.2f}".format(obs/60) for obs in times]
+        lines = []
+        for i in range(len(times)):
+            lines.append(plt.plot(locations, data[:,i],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
+        
+        if plot_legend:
+            plt.legend(lines, legends)
+        plt.xlabel('Location')
+        plt.ylabel('Concentration')
+        
+
+    elif plot_type == 'surface': 
+        #fig = plt.figure()
+        ax = plt.gcf().add_subplot(111, projection='3d')
+        X, Y = np.meshgrid(times/60, locations)
+        ax.plot_surface(X, Y, data, cmap='viridis', alpha=d3_alpha)
+        ax.set_xlabel('Time (min)')
+        ax.set_ylabel('Location')
+        ax.set_zlabel('Concentration')
+        lines = None
+        legends = None
+        # rotate the plot
+        
     
-    if plot_legend:
-        plt.legend(lines, legends)
-    plt.xlabel('Time (min)')
-    plt.ylabel('Concentration')
+    else:
+        raise Exception('Unsupported plot type')
 
     return lines, legends
 
