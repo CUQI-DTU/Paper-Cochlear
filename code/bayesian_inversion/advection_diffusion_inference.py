@@ -137,7 +137,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-parent_dir = 'results_feb7/'+args.version
+parent_dir = 'results/'+args.version
 dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
