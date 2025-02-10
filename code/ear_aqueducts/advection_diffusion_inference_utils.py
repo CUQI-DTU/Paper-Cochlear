@@ -329,7 +329,6 @@ def read_data_files(args):
         real_std_data = std_file[CA_ST_std_list].values.T
     if args.data_grad:
         print('real_data shape: ', real_data.shape)
-        print('real data:\n'   , real_data)
         real_data_diff = np.zeros((real_data.shape[0]-1, real_data.shape[1]))
 
         for i in range(real_data.shape[0]-1):
@@ -775,7 +774,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
     
     return posterior_samples_burnthin, my_sampler
 
-def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_time', d3_alpha=0, marker=None, linestyle='-', colormap=None):
+def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_time', d3_alpha=0, marker=None, linestyle='-', colormap=None, y_log=False, plot_against=None):
     # Plot data
     # plot type can be 'over_time' or 'over_location' or 'surface'
     if colormap is None:
@@ -819,10 +818,31 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         lines = None
         legends = None
         # rotate the plot
+
+    elif plot_type == 'against_data':
+        if plot_against is None:
+            raise Exception('plot_against must be provided when plot_type is "against_data"')
+        if len(plot_against) != len(data):
+            raise Exception('plot_against must have the same length as data')
+        legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
+        lines = []
+        for i in range(len(locations)):
+            lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker))
+
+        if plot_legend:
+            plt.legend(lines, legends)
+        plt.xlabel('data')
+        plt.ylabel('reconstruction')
+        if y_log:
+            plt.xscale('log')
+
         
     
     else:
         raise Exception('Unsupported plot type')
+    # set y scale to log
+    if y_log:
+        plt.yscale('log')
 
     return lines, legends
 
