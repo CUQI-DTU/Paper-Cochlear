@@ -296,7 +296,6 @@ def read_data_files(args):
     CA_list = ['CA'+sep2+str(i+1) for i in range(args.num_CA)]
 
     if args.num_ST == 0: # Only CA data
-        print('CA data.')
         ## Read distance file
         dist_file = pd.read_csv(data_path+'/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
         real_locations = dist_file['distance microns'].values[:args.num_CA]
@@ -311,7 +310,6 @@ def read_data_files(args):
         real_std_data = constr_file[CA_std_list].values.T
   
     elif args.num_ST > 0: # CA and ST data
-        print('CA and ST data.')
 
         ## Read distance file
         dist_file = pd.read_csv(data_path+'/combined_CA_ST/'+pre+'_'+args.animal+sep+args.ear+'_distances.csv')
@@ -331,7 +329,6 @@ def read_data_files(args):
         CA_ST_std_list = [item+' std' for item in CA_ST_list]
         real_std_data = std_file[CA_ST_std_list].values.T
     if args.data_grad:
-        print('real_data shape: ', real_data.shape)
         real_data_diff = np.zeros((real_data.shape[0]-1, real_data.shape[1]))
 
         for i in range(real_data.shape[0]-1):
@@ -1389,6 +1386,23 @@ def read_all_scenarios(scenarios_dir, scenarios_subdir, scenario_tags_list):
                     ))
 
     return data_list
+def read_all_scenarios_2(scenario_dir, scenario_tag, animal_ear):
+    
+    # Read all cases for the scenario
+    data_diff_list = []
+    data_adv_list = []
+    for animal, ear in animal_ear:
+            # Read the experiment data
+            data_diff_list.append(
+                read_experiment_data(
+                    scenario_dir+"/"+scenario_tag[0],
+                    animal+"_"+ear+"_"+scenario_tag[2]
+                    ))
+            data_adv_list.append(
+                read_experiment_data(
+                    scenario_dir+"/"+scenario_tag[1],
+                    animal+"_"+ear+"_"+scenario_tag[3]))
+    return data_diff_list, data_adv_list
 
 def plot_control_case(data_list):
     # create a 4 by 5 plot, each row is for a different case
@@ -1663,3 +1677,570 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
 
     # remove the upper right plot
     axs[0, 3].axis('off')
+
+def plot_v3_fig1( data_diff_list, data_adv_list):
+                
+    # Create a figure with 10 rows and 3 columns. First column is for the
+    # data, second column is for the prediction from the diffusion model,
+    # and the third column is for the prediction from the advection model.
+    fig, axs = plt.subplots(4, 3, figsize=(8, 8))
+    #print(data_adv_list[0].keys())
+    # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+    for i in range(len(data_diff_list)):
+        # Plot the data
+        plt.sca(axs[i, 0])
+        plot_time_series(data_diff_list[i]['times'], data_diff_list[i]['locations'],
+                         data_diff_list[i]['data'], plot_legend=False)
+        
+        # Plot the prediction from the diffusion model
+        plt.sca(axs[i, 1])
+        plot_time_series(data_diff_list[i]['times'], data_diff_list[i]['locations'],
+                         data_diff_list[i]['mean_recon_data'], plot_legend=False)
+        #switch of ticks and label of y
+        plt.ylabel('')
+        
+        # Plot the prediction from the advection model
+        plt.sca(axs[i, 2])
+        lines, legends = plot_time_series(data_adv_list[i]['times'], data_adv_list[i]['locations'],
+                         data_adv_list[i]['mean_recon_data'])
+
+        #switch of ticks and label of y
+        plt.ylabel('') 
+
+        # legend location after the last plot outside the plot
+
+        plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5))
+
+def plot_v3_fig1_b( data_diff_list, data_adv_list, fig_v="I", plot_type='over_time', colormap=None, y_log=False, y_min=0, y_max=5750):
+    # fig_v = "I" or "II" or "III"
+                
+    # Create a figure with 10 rows and 3 columns. First column is for the
+    # data, second column is for the prediction from the diffusion model,
+    # and the third column is for the prediction from the advection model.
+    num_cases = len(data_diff_list)
+    if fig_v == "I":
+        fig, axs = plt.subplots(num_cases, 3, figsize=(8, 2*(num_cases)))
+        # increase h space
+        plt.subplots_adjust(wspace=0.3)
+        # print(data_adv_list[0].keys())
+        # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+        for i in range(len(data_diff_list)):
+            # Plot the data
+            plt.sca(axs[i, 0])
+            real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[i]['experiment_par'])
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, plot_type=plot_type, y_log=y_log)
+            print(data_diff_list[i]['experiment_par'])
+            plt.ylabel('Concentration, '+data_diff_list[i]['experiment_par'].animal+' '+data_diff_list[i]['experiment_par'].ear)
+
+            if i == 0:
+                plt.title("Real data")
+
+            
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data = A.pde._solution_obs
+
+
+            plt.sca(axs[i, 1])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+            #switch of ticks and label of y
+            plt.ylabel('')
+            if i == 0:
+                plt.title("Diffusion model\n prediction") 
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data = A.pde._solution_obs
+
+                plt.sca(axs[i, 2])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+                #switch of ticks and label of y
+                plt.ylabel('')
+                # legend location after the last plot outside the plot
+                plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5)) 
+                if i == 0:
+                    plt.title("Diffusion-advection\n model prediction")
+                plt.text(20, 3000, "mean a\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1]), fontsize=10)
+            except:
+                pass
+
+
+
+           
+            
+    elif fig_v == "II":
+        # same as version one but two columns, plot the real data overlaid with the prediction
+        fig, axs = plt.subplots(num_cases, 3, figsize=(10, 2*(num_cases)))
+        # increase h space
+        plt.subplots_adjust(wspace=0.3)
+        # print(data_adv_list[0].keys())
+        # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+        for i in range(len(data_diff_list)):
+
+            # Plot the data
+
+
+            #if i == 0:
+            #    plt.title("Real data")
+
+            real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[i]['experiment_par'])
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+
+
+            plt.sca(axs[i, 0])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log)
+            #switch of ticks and label of y
+            plt.ylabel('')
+            
+
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log)
+            #print(data_diff_list[i]['experiment_par'])
+            plt.ylabel('Concentration, '+data_diff_list[i]['experiment_par'].animal+' '+data_diff_list[i]['experiment_par'].ear)
+            plt.ylim(y_min, y_max)
+            if i == 0:
+                plt.title("Diffusion model\n prediction") 
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data_adv = A.pde._solution_obs
+
+                plt.sca(axs[i, 1])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data_adv, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log)
+                #switch of ticks and label of y
+                plot_time_series(real_times, real_locations,
+                real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log)
+                plt.ylabel('')
+                plt.ylim(y_min, y_max)
+                # no legend
+
+                if i == 0:
+                    plt.title("Diffusion-advection\n model prediction")
+                plt.text(20, 4000, "mean a\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1]), fontsize=10)
+            except:
+                pass
+
+            # Plot the difference between the advection and the diffusion model
+            #---
+            plt.sca(axs[i, 2])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log)
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_adv, plot_legend=False, plot_type=plot_type, colormap=colormap, linestyle='--', y_log=y_log)
+            plt.ylabel('')
+            plt.ylim(y_min, y_max)
+            # legend location after the last plot outside the plot
+            plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5)) 
+            if i == 0:
+                plt.title("Diff. Diffusion-advection\n & diffusion prediction")
+    elif fig_v == "III":
+        #same as one but with additional 2 columns for the difference between the real data and the prediction
+        fig, axs = plt.subplots(4, 5, figsize=(12, 8))
+        # increase h space
+        #plt.subplots_adjust(wspace=0.3)
+        # print(data_adv_list[0].keys())
+        # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+        for i in range(len(data_diff_list)):
+            # Plot the data
+            plt.sca(axs[i, 0])
+            real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[i]['experiment_par'])
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, plot_type=plot_type, y_log=y_log)
+            plt.ylim(-1000, y_max)
+            print(data_diff_list[i]['experiment_par'])
+            plt.ylabel('Concentration, '+data_diff_list[i]['experiment_par'].animal+' '+data_diff_list[i]['experiment_par'].ear)
+
+            if i == 0:
+                plt.title("Real data")
+
+            
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data = A.pde._solution_obs
+
+
+            plt.sca(axs[i, 1])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+            plt.ylim(-1000, y_max)
+            #switch of ticks and label of y
+            plt.ylabel('')
+            if i == 0:
+                plt.title("Diffusion model\n prediction") 
+
+            plt.sca(axs[i, 2])
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times))-non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+            plt.ylim(-1000, y_max)
+            plt.ylabel('')
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data = A.pde._solution_obs
+
+                plt.sca(axs[i, 3])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+                plt.ylim(-1000, y_max)
+                #switch of ticks and label of y
+                plt.ylabel('')
+ 
+                if i == 0:
+                    plt.title("Diffusion-advection\n model prediction")
+                plt.text(20, 3000, "mean a\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1]), fontsize=10)
+                # plot difference between real data and prediction
+                                # legend location after the last plot outside the plot
+                plt.sca(axs[i, 4])
+                plot_time_series(real_times, real_locations,
+                                real_data.reshape(len(real_locations), len(real_times))-non_grad_mean_recon_data, plot_legend=False, plot_type=plot_type, y_log=y_log)
+                plt.ylim(-1000, y_max)
+                plt.ylabel('')
+                plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5))
+            except:
+                pass
+
+    elif fig_v == "IV":
+        # same as version one but two columns, plot the real data overlaid with the prediction
+        fig, axs = plt.subplots(num_cases, 3, figsize=(10, 2*(num_cases)))
+        # increase h space
+        plt.subplots_adjust(wspace=0.3)
+        # print(data_adv_list[0].keys())
+        # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+        for i in range(len(data_diff_list)):
+
+            # Plot the data
+
+
+            #if i == 0:
+            #    plt.title("Real data")
+
+            real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[i]['experiment_par'])
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+
+
+            plt.sca(axs[i, 0])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, plot_against=real_data.reshape(len(real_locations), len(real_times)))
+            #switch of ticks and label of y
+            plt.ylabel('')
+            
+
+
+            #print(data_diff_list[i]['experiment_par'])
+            plt.ylabel(data_diff_list[i]['experiment_par'].animal+' '+data_diff_list[i]['experiment_par'].ear)
+            plt.ylim(y_min, y_max)
+            plt.xlim(y_min, y_max)
+            if i == 0:
+                plt.title("Diffusion model\n prediction") 
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data_adv = A.pde._solution_obs
+
+                plt.sca(axs[i, 1])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data_adv, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, plot_against=real_data.reshape(len(real_locations), len(real_times)))
+                #switch of ticks and label of y
+
+                plt.ylabel('')
+                plt.ylim(y_min, y_max)
+                plt.xlim(y_min, y_max)
+                
+                if i == 0:
+                    plt.title("Diffusion-advection\n model prediction")
+                plt.text(20, 4000, "mean a\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1]), fontsize=10)
+            except:
+                pass
+
+            # Plot the difference between the advection and the diffusion model
+            #---
+            plt.sca(axs[i, 2])
+            plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, plot_against=non_grad_mean_recon_data_adv)
+
+            plt.ylabel('')
+            plt.ylim(y_min, y_max)
+            plt.xlim(y_min, y_max)
+            # legend location after the last plot outside the plot
+            plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5)) 
+            if i == 0:
+                plt.title("Diff. Diffusion-advection\n & diffusion prediction")        
+
+
+    
+# dir_name +'/output'+ tag+'/'+tag+'_var.pkl'
+def plot_v3_fig2(data_diff_list, data_adv_list):
+    # create a 10 by 3 plot, each row is for a different animal and ear
+    # the first column is for the credibility interval of the inferred
+    # diffusion parameter, the second column is for the prior and posterior
+    # of the advection parameter, and the third column is for the prior and
+    # posterior of the GIBBS parameter
+    fig, axs = plt.subplots(4, 3, figsize=(8, 8))
+    # add wspace
+    plt.subplots_adjust(wspace=0.3)
+
+
+    for i in range(len(data_diff_list)):
+        # Plot the credibility interval of the inferred diffusion parameter
+        plt.sca(axs[i, 0])
+        l_ci1 = data_diff_list[i]['x_samples'].funvals.plot_ci(68)
+        
+        try:
+            l_ci2 = cuqi.samples.Samples(data_adv_list[i]['x_samples'].samples[:-1,:], geometry=data_diff_list[i]['x_samples'].geometry).funvals.plot_ci( 68, plot_envelope_kwargs={'facecolor': 'g'}, color='g')
+        except:
+            pass
+        # plot legend before first column
+        if i == 3:
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -0.5), ncol=4)
+        else:
+            # set legend to off
+            plt.legend().set_visible(False)
+        # compute ESS min
+        ESS_diff = np.min(data_diff_list[i]['x_samples'].compute_ess())
+        try:
+            ESS_adv = np.min(data_adv_list[i]['x_samples'].compute_ess())
+        except:
+            ESS_adv=0
+            pass
+        # add it to the plot
+        #plt.
+        # (10, 1000, 'ESS: \n'+str(int(ESS_diff))+'\n'+str(int(ESS_adv)), fontsize=12)
+        if i == 0:
+            plt.title("Diff. parameter inference")
+        if ESS_adv != 0:
+            # plot the prior and posterior of the advection parameter
+            plt.sca(axs[i, 1])
+            var_a_sqrt = 0.752**2
+            var_a = 2*var_a_sqrt**2
+            prior2 =cuqi.distribution.Gaussian(0, var_a) #TODO: store
+            v_min = -3
+            v_max = 3
+            cuqi.utilities.plot_1D_density(prior2, v_min=v_min, v_max=v_max, color='b',label='prior')
+            #plt.hist(data_adv_list[i]['x_samples'].samples[-1,:].flatten(), bins=50, alpha=0.5, label='$a$', color='orange')
+
+            
+            kde = sps.gaussian_kde(data_adv_list[i]['x_samples'].samples[-1,:].flatten())
+            x = np.linspace(v_min, v_max, 100)
+            l1 = plt.plot(x, kde(x), color='black', label='posterior')
+            if i == 0:
+                plt.legend()
+            if i==0:
+                plt.title("Adv. parameter inference") 
+                
+
+            # plot the gibbs
+            plt.sca(axs[i, 2])
+            s = cuqi.distribution.Gamma(1.2, 5) #TODO: store
+            s_samples = s.sample(10000)
+            v_min = 0
+            v_max = 10
+            if i == 0:  
+                plt.title("Noise level inference")
+                
+            #cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
+            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten())) 
+            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()))
+            x = np.linspace(v_min, v_max, 100)
+            l1 = plt.plot(x, kde_1(x), color='blue', label='prior')
+            l2 = plt.plot(x, kde_2(x), color='black', label='posterior')
+            if i == 0:
+                plt.legend()
+            #plt.legend()
+        
+
+def plot_v3_intro_data(data_diff_list, data_adv_list, plot_type='over_time'):
+    # plot real data time series for first animal and ear (one row/ one column)
+    
+    if plot_type == 'over_time' or plot_type == 'over_location':
+        fig = plt.figure(figsize=(4, 2))
+    else:
+        fig = plt.figure(figsize=(4, 4))
+    # set left, right, top, bottom to 0.1, 0.9, 0.9, 0.1
+    plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
+    #plt.sca(plt.subplot(111))
+
+    real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[0]['experiment_par'])
+    lines, legend = plot_time_series(real_times, real_locations,
+                     real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, plot_type=plot_type, d3_alpha=0.85)
+    return lines, legend
+    # fix label does not show properly
+    #plt.ylabel('Concentration')
+
+
+def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_list_all, diff_min=100, diff_max=750):
+    # create a 10 by 3 plot, each row is for a different animal and ear
+    # the first column is for the credibility interval of the inferred
+    # diffusion parameter, the second column is for the prior and posterior
+    # of the advection parameter, and the third column is for the prior and
+    # posterior of the GIBBS parameter
+    num_cases = len(data_diff_list) 
+    fig, axs = plt.subplots(num_cases+1, 4, figsize=(10, (num_cases+1)*(12/5)))
+    # add wspace
+    plt.subplots_adjust(wspace=0.3)
+    
+
+    for i in range(len(data_diff_list)):
+        # Plot the credibility interval of the inferred diffusion parameter
+        plt.sca(axs[i, 0])
+        l_ci1 = data_diff_list[i]['x_samples'].funvals.plot_ci(68)
+        
+        try:
+            l_ci2 = cuqi.samples.Samples(data_adv_list[i]['x_samples'].samples[:-1,:], geometry=data_diff_list[i]['x_samples'].geometry).funvals.plot_ci( 68, plot_envelope_kwargs={'facecolor': 'g'}, color='g')
+        except:
+            pass
+        # plot legend before first column
+        if i == 3:
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -1.7), ncol=4)
+        else:
+            # set legend to off
+            plt.legend().set_visible(False)
+        # compute ESS min
+        ESS_diff = np.min(data_diff_list[i]['x_samples'].compute_ess())
+        try:
+            ESS_adv = np.min(data_adv_list[i]['x_samples'].compute_ess())
+        except:
+            ESS_adv=0
+            pass
+        plt.ylim(diff_min, diff_max)
+        # add mouse number and ear in the y label
+        plt.ylabel(data_diff_list[i]['experiment_par'].animal+' '+data_diff_list[i]['experiment_par'].ear)
+        # add it to the plot
+        #plt.
+        # (10, 1000, 'ESS: \n'+str(int(ESS_diff))+'\n'+str(int(ESS_adv)), fontsize=12)
+        if i == 0:
+            plt.title("Diff. parameter inference")
+        if ESS_adv != 0:
+            # plot the prior and posterior of the advection parameter
+            plt.sca(axs[i, 1])
+            var_a_sqrt = 0.752**2
+            var_a = 2*var_a_sqrt**2
+            prior2 =cuqi.distribution.Gaussian(0, var_a) #TODO: store
+            v_min = -3
+            v_max = 3
+            cuqi.utilities.plot_1D_density(prior2, v_min=v_min, v_max=v_max, color='b',label='prior')
+            #plt.hist(data_adv_list[i]['x_samples'].samples[-1,:].flatten(), bins=50, alpha=0.5, label='$a$', color='orange')
+
+            
+            kde = sps.gaussian_kde(data_adv_list[i]['x_samples'].samples[-1,:].flatten())
+            x = np.linspace(v_min, v_max, 100)
+            l1 = plt.plot(x, kde(x), color='black', label='posterior')
+            if i == 0:
+                plt.legend()
+            if i==0:
+                plt.title("Adv. parameter inference") 
+                
+
+            # plot the gibbs
+            plt.sca(axs[i, 2])
+            s = cuqi.distribution.Gamma(1.2, 5) #TODO: store
+            s_samples = s.sample(10000)
+            v_min2 = 0
+            v_max2 = 10
+            if i == 0:  
+                plt.title("Noise level inference")
+                
+            #cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
+            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten())) 
+            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()))
+            x2 = np.linspace(v_min2, v_max2, 100)
+            l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
+            l2 = plt.plot(x2, kde_2(x2), color='black', label='posterior')
+            if i == 0:
+                plt.legend()
+            #plt.legend()
+
+            
+            # plot scatter plot of mean diffusion and advection
+            plt.sca(axs[i, 3])
+                # samples of average diffusion
+            samples_diff_avg = np.array([np.average(data_adv_list[i]['x_samples'].samples[:-1,j]) for j in range(data_adv_list[i]['x_samples'].Ns)])
+            # stack advection and diffusion
+            diff_adv = cuqi.samples.Samples(np.vstack(
+                                    (samples_diff_avg, data_adv_list[i]['x_samples'].samples[-1,:])))
+            diff_adv.geometry = cuqi.geometry.MappedGeometry( cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', '$a$']), data_adv_list[0]['x_samples'].geometry.map)
+
+            # plot the correlation
+            color_list = ['b']*num_cases
+            diff_adv.funvals.plot_pair(ax=plt.gca(), scatter_kwargs={'alpha':0.5, 'color':color_list[i]})
+            plt.xlim(v_min, v_max)
+            plt.ylim(diff_min, diff_max)
+
+    color_map_string = 'coolwarm' #'twilight' #'terrain'#'coolwarm'#'berlin' #'brg'
+    skip_middle = False
+    colormap=plt.colormaps.get_cmap(color_map_string)
+    # create color list for the len(data_diff_list_all) lines but skip the white in the middle
+    if skip_middle:
+        color_list = [colormap(i) for i in np.linspace(0, 1, len(data_diff_list_all)+4)]
+        color_list = color_list[:4]+color_list[5:] 
+    else:
+        color_list = [colormap(i) for i in np.linspace(0, 1, len(data_diff_list_all))]
+    for i in range(len(data_diff_list_all)):
+        
+        if True:
+            plt.sca(axs[num_cases, 0])
+            # plot all the means
+            l_ci4 = cuqi.samples.Samples(data_adv_list_all[i]['x_samples'].samples[:-1,:], geometry=data_diff_list_all[i]['x_samples'].geometry).plot_mean(color=color_list[i])
+            plt.title("")
+            plt.ylim(diff_min, diff_max)
+
+            plt.sca(axs[num_cases, 1])
+            # plot all the posteriors and a prior of the advection parameter
+            if i == 0:
+                cuqi.utilities.plot_1D_density(prior2, v_min=v_min, v_max=v_max, color='b',label='prior')
+                        
+            kde = sps.gaussian_kde(data_adv_list_all[i]['x_samples'].samples[-1,:].flatten())
+            x = np.linspace(v_min, v_max, 100)
+
+            l1 = plt.plot(x, kde(x), color=color_list[i],
+                          label='posterior')
+            plt.xlim(v_min, v_max)
+        
+            plt.sca(axs[num_cases, 2])
+            # plot all the posteriors and a prior of the gibbs parameter
+            if i == 0:
+                l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
+            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list_all[i]['s_samples'].samples.flatten()))
+            x2 = np.linspace(v_min2, v_max2, 100)
+            l1 = plt.plot(x2, kde_2(x2), color=color_list[i], label='posterior')
+    # remove axs[4, 3]
+    fig.delaxes(axs[num_cases, 3])
+
+        
+
