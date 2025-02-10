@@ -137,7 +137,7 @@ times = real_times
 
 #%% STEP 3: Create output directory
 #----------------------------------
-parent_dir = 'results_jan6/'+args.version
+parent_dir = 'results_feb7/'+args.version
 dir_name = parent_dir +'/output'+tag
 if not os.path.exists(dir_name):
     os.makedirs(dir_name)
@@ -290,7 +290,7 @@ posterior = joint(y=data) # condition on y=y_obs
 callback_obj = Callback(
                  dir_name=dir_name,
                  exact_x=exact_x,
-                 exact_data=exact_data.reshape(G_cont2D.fun_shape),
+                 exact_data=exact_data.reshape(G_cont2D.fun_shape) if exact_data is not None else None,
                  data=data.reshape(G_cont2D.fun_shape),
                  args=args, 
                  locations=diff_locations if args.data_grad else locations,
