@@ -2,10 +2,13 @@ import argparse
 import json
 import pandas as pd
 import numpy as np
-from cuqi.geometry import MappedGeometry, Discrete, Continuous1D
+import scipy.stats as sps
+from cuqi.geometry import MappedGeometry, Discrete, Continuous1D, Continuous2D
 from cuqi.array import CUQIarray
 from cuqi.distribution import Gaussian, GMRF
 from cuqi.sampler import MH, NUTS
+from cuqi.pde import TimeDependentLinearPDE
+from cuqi.model import PDEModel
 import matplotlib.pyplot as plt
 from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
@@ -278,14 +281,14 @@ def read_data_files(args):
     if args.pixel_data:
         # assert num_ST is 0
         assert args.num_ST == 0, 'num_ST should be 0 when using pixel data'
-        data_path =  '../../data/parsed/CT/ca1pixel'
+        data_path =  '../data/parsed/CT/ca1pixel'
         pre='ca1pixel'
         sep=''
         sep2=' ' 
     else:
         # assert num_CA is 5 or less
         assert args.num_CA <= 5, 'num_CA should be 5 or less when using averaged data'
-        data_path = '../../data/parsed/CT'
+        data_path = '../data/parsed/CT'
         pre='20210120'
         sep='_'
         sep2=''
