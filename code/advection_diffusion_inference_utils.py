@@ -1511,7 +1511,7 @@ def plot_control_case(data_list):
         true_s = float(data_list[i]['experiment_par'].noise_level.split('_')[1])
         plt.axvline(true_s, color='r', linestyle='--')
 
-def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
+def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_coor=0.4):
     # create a 4 by 5 plot, each row is for a different case
     # in the data_list. The first column is for the exact data,
     # the second column is for the predicted data (mean reconstruction data)
@@ -1519,8 +1519,17 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
     # the fourth column is for the advection prior and posterior
     # the fifth column is for the hyperparamter prior and posterior
     # note that the first row does not have the advection parameter
+    SMALL_SIZE = 7
+    MEDIUM_SIZE =8
+    BIGGER_SIZE = 9
+    matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE)
 
-    fig, axs = plt.subplots(4, 4, figsize=(12, 10))
+    legend_y = -0.5
+    legend_x = 0.5
+
+    fig, axs = plt.subplots(4, 5, figsize=(7, 5.5), layout="constrained")
+    fig.subplots_adjust(wspace=0.0)
+
     for i in range(len(data_list)):
         # create A
         A = create_A(data_list[i])
@@ -1546,9 +1555,10 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
         non_grad_exact_data = A.pde._solution_obs
         # Plot the mean reconstruction data
         plt.sca(axs[i, 0])
-
-        plot_time_series(
-            real_times, real_locations, non_grad_mean_recon_data, plot_legend=False,             plot_type=plot_type,
+        plot_legend = False
+        lines, labels = plot_time_series(
+            real_times, real_locations, non_grad_mean_recon_data, plot_legend=plot_legend,
+            plot_type=plot_type,
             colormap=colormap
         )
         plot_time_series(
@@ -1561,61 +1571,52 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
             plot_type=plot_type,
             colormap=colormap
         )
-        plt.ylim(-500, 4000)
-        if i != len(data_list) - 1:
+        plt.ylim(-500, 4000)    
+        plt.xlim(real_times[0]/60, real_times[-1]/60)
+        plt.ylabel(r"$\boldsymbol{c}$")
+        plt.gca().yaxis.set_label_coords(0.15, 0.5)
+        if i == 3:
+            plt.legend(lines, labels, loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+            plt.xlabel("Time (min.)")
+        else:
             plt.xlabel("")
+            # keep ticks but remove ticks labels for x 
+            plt.gca().tick_params(labelbottom=False) 
 
-        # print norm of the difference
-        # print(np.linalg.norm(non_grad_mean_recon_data-non_grad_exact_data))
-
-        # Plot the exact data
-        #plt.sca(axs[i, 0])
-        #
-        #
-        #plot_time_series(
-        #    real_times,
-        #    diff_locations,
-        #    exact_data.reshape([len(diff_locations), len(real_times)]),
-        #    plot_legend=False,
-        #)
-        #plot_time_series(
-        #    real_times,
-        #    diff_locations,
-        #    noisy_grad_data.reshape([len(diff_locations), len(real_times)]),
-        #    plot_legend=False,
-        #    marker="*",
-        #    linestyle=""
-        #)
-        #plot_time_series(
-        #    real_times,
-        #    diff_locations,
-        #    mean_recon_data.reshape([len(diff_locations), len(real_times)]),
-        #    plot_legend=False,
-        #    linestyle="--",
-        #)
-        #
-        #plt.ylim(-20, 20)
 
         # Plot the credibility interval of the inferred diffusion parameter
         plt.sca(axs[i, 1])
         if i == 0:
 
-            l_ci1 = data_list[i]["x_samples"].funvals.plot_ci(68, exact=data_list[i]["exact"])
+            l_ci1 = data_list[i]["x_samples"].funvals.plot_ci(68)
+            exact=data_list[i]["exact"]
 
         else:
             l_ci2 = cuqi.samples.Samples(
                 data_list[i]["x_samples"].samples[:-1, :],
                 geometry=data_list[0]["x_samples"].geometry,
-            ).plot_ci(68, plot_envelope_kwargs={"facecolor": "g"}, color="g")
+            ).plot_ci(68, plot_envelope_kwargs={"facecolor": "gray", "edgecolor": "gray"}, color="gray")
             exact = cuqi.array.CUQIarray(
                 data_list[i]["exact"].to_numpy()[:-1],
                 is_par=False,
                 geometry=data_list[0]["x_samples"].geometry,
             )
-            exact.plot(color="C1")
+        l_exact = exact.plot(color="red", linestyle="--")
             # remove legend
         plt.gca().legend().remove()
+        plt.xlim(real_locations[0], real_locations[-1])
+        plt.ylabel(r"$\boldsymbol{D}$")
+        plt.gca().yaxis.set_label_coords(0.17, d_y_coor)
         # for i != 0, plot the prior and posterior of the advection parameter
+        if i == 3:
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+            plt.xlabel("Location ("+r"$\mu$"+"m)")
+        else:
+            plt.xlabel("")
+            # ticks off
+            plt.gca().tick_params(labelbottom=False) 
+
+
         plt.sca(axs[i, 3])
         v_min = -3
         v_max = 3
@@ -1638,20 +1639,26 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
 
             # plot vertical line true value
             true_a = data_list[i]["experiment_par"].true_a
-            plt.axvline(true_a, color="r", linestyle="--")
+            plt.axvline(true_a, color="r", linestyle="--", label="exact")
 
         # write ess
         ESS_val = data_list[i]["x_samples"].compute_ess()
-        plt.text(-2.8, 0.8, 'ESS (min): \n'+str(int(np.min(ESS_val))), fontsize=8)
-        plt.text(-2.8, 0.6, 'ESS (mean): \n'+str(int(np.mean(ESS_val))), fontsize=8)
-        plt.text(-2.8, 0.4, 'ESS (max): \n'+str(int(np.max(ESS_val))), fontsize=8)
+        print('ESS (min): '+str(int(np.min(ESS_val))) , 'ESS (mean): '+str(int(np.mean(ESS_val))) , 'ESS (max): '+str(int(np.max(ESS_val)))   )
         plt.ylim(0, 1.1)
         plt.xlim(v_min, v_max)
+        if i==3:
+            plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+            plt.xlabel(r"$a$"+" ("+r"$\mu$"+"m/sec.)")
+        else:
+            plt.xlabel("")
+            # ticks off
+            plt.gca().tick_params(labelbottom=False) 
 
         # plot the gibbs hyperparameter
         plt.sca(axs[i, 2])
+        np.random.seed(0)
         s = cuqi.distribution.Gamma(0.9, 0.5)  # TODO: store
-        s_samples = s.sample(10000)
+        s_samples = s.sample(100000)
         v_min = 0
         v_max = 2
 
@@ -1666,17 +1673,74 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None):
         # log y scal
         #plt.yscale("log")
         #plt.ylim(1e-15, 10)
-        plt.legend()
+
 
         # plot true value
         true_s = float(data_list[i]["experiment_par"].noise_level.split("_")[1])
-        plt.axvline(true_s, color="r", linestyle="--")
+        plt.axvline(true_s, color="r", linestyle="--", label="exact")
+        if i==3:
+            plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+            plt.xlabel("noise std")
+        else:
+            plt.xlabel("")
+            # ticks off
+            plt.gca().tick_params(labelbottom=False) 
+        plt.ylim(0, 6)
+        plt.xlim(v_min, v_max)
+
+        # plot peclet number
+        plt.sca(axs[i, 4])
+        if i != 0:
+            np.random.seed(0)
+            #a_prior_samples = prior2.sample(100000)
+
+            samples_diff_min = np.array([np.average(data_list[i]['x_samples'].samples[:-1,j]) for j in range(data_list[i]['x_samples'].Ns)])
+            samples_a = data_list[i]["x_samples"].samples[-1, :].flatten()
+            samples_peclet = np.zeros_like(samples_diff_min)
+            for j in range(data_list[i]['x_samples'].Ns):
+                samples_peclet[j] = peclet_number(a=np.abs(samples_a[j]), d=samples_diff_min[j], L=real_locations[-1])
+            kde_peclet = sps.gaussian_kde(samples_peclet)
+            pec_min = 0
+            pec_max = 50
+            x_peclet = np.linspace(pec_max, pec_min, pec_max)
+            l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color="black", label="posterior")
+            if i==3:
+                plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+                plt.xlabel("Pe")
+            else:
+                plt.xlabel("")
+                # ticks off
+                plt.gca().tick_params(labelbottom=False) 
+            plt.xlim(pec_min, pec_max)
+            plt.ylim(0, 0.08)
+
 
         
-    plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-2, -0.4), ncol=4)
+
 
     # remove the upper right plot
     axs[0, 3].axis('off')
+    axs[0, 4].axis('off')
+
+    # Add labels for the columns:
+    axs[0, 0].set_title("Prediction")
+    axs[0, 1].set_title(r"$\boldsymbol{D}$"+" estimate")
+    axs[0, 2].set_title(r"$\sqrt{\delta^{-1}}$"+" estimate")
+    axs[0, 3].set_title(r"$a$"+" estimate")
+    axs[0, 4].set_title("Pe"+" estimate")
+
+    # Add labels for the rows not using the y label
+    row_l_x = -18
+    row_l_y = 2000
+    plt.sca(axs[0, 0])
+    plt.text(row_l_x, row_l_y, "Diff. only", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center') 
+    plt.sca(axs[1, 0])
+    plt.text(row_l_x, row_l_y,r"$a="+str(data_list[1]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+    plt.sca(axs[2, 0])
+    plt.text(row_l_x, row_l_y, r"$a="+str(data_list[2]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+    plt.sca(axs[3, 0])
+    plt.text(row_l_x, row_l_y, r"$a="+str(data_list[3]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+
 
 def plot_v3_fig1( data_diff_list, data_adv_list):
                 
@@ -2242,5 +2306,11 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     # remove axs[4, 3]
     fig.delaxes(axs[num_cases, 3])
 
-        
-
+def matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE):
+    plt.rc('font', size=MEDIUM_SIZE)         # controls default text sizes
+    plt.rc('axes', titlesize=BIGGER_SIZE)    # fontsize of the axes title
+    plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+    plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title 
