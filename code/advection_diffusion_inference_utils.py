@@ -1668,7 +1668,8 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             plt.xlabel("")
             # ticks off
             plt.gca().tick_params(labelbottom=False) 
-
+        plt.ylabel(r"$p(a)$")
+        plt.gca().yaxis.set_label_coords(0.17, 0.5)
         # plot the gibbs hyperparameter
         plt.sca(axs[i, 2])
         np.random.seed(0)
@@ -1695,13 +1696,16 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.axvline(true_s, color="r", linestyle="--", label="exact")
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel("noise std")
+            plt.xlabel(r"$\delta^{-1/2}$")
         else:
             plt.xlabel("")
             # ticks off
             plt.gca().tick_params(labelbottom=False) 
         plt.ylim(0, 6)
         plt.xlim(v_min, v_max)
+        plt.ylabel(r"$p(\delta^{-1/2})$")
+        plt.gca().yaxis.set_label_coords(0.20, 0.7)
+
 
         # plot peclet number
         plt.sca(axs[i, 4])
@@ -1709,15 +1713,16 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             np.random.seed(0)
             #a_prior_samples = prior2.sample(100000)
 
-            samples_diff_min = np.array([np.average(data_list[i]['x_samples'].samples[:-1,j]) for j in range(data_list[i]['x_samples'].Ns)])
+            samples_diff_avg = np.array([np.average(data_list[i]['x_samples'].samples[:-1,j]**2) for j in range(data_list[i]['x_samples'].Ns)])
             samples_a = data_list[i]["x_samples"].samples[-1, :].flatten()
-            samples_peclet = np.zeros_like(samples_diff_min)
+            samples_peclet = np.zeros_like(samples_diff_avg)
             for j in range(data_list[i]['x_samples'].Ns):
-                samples_peclet[j] = peclet_number(a=np.abs(samples_a[j]), d=samples_diff_min[j], L=real_locations[-1])
+                samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_diff_avg[j], L=real_locations[-1])
             kde_peclet = sps.gaussian_kde(samples_peclet)
-            pec_min = 0
-            pec_max = 50
-            x_peclet = np.linspace(pec_min, pec_max, pec_max)
+            pec_min = -3
+            pec_max = 3
+            pec_num = 100
+            x_peclet = np.linspace(pec_min, pec_max, pec_num)
             l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color="black", label="posterior")
             if i==3:
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
@@ -1727,7 +1732,9 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
                 # ticks off
                 plt.gca().tick_params(labelbottom=False) 
             plt.xlim(pec_min, pec_max)
-            plt.ylim(0, 0.08)
+            plt.ylabel(r"$p(\text{Pe})$")
+            plt.gca().yaxis.set_label_coords(0.17, 0.5)
+            #plt.ylim(0, 0.08)
 
 
         
@@ -1740,7 +1747,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
     # Add labels for the columns:
     axs[0, 0].set_title("Prediction")
     axs[0, 1].set_title(r"$\boldsymbol{D}$"+" estimate")
-    axs[0, 2].set_title(r"$\sqrt{\delta^{-1}}$"+" estimate")
+    axs[0, 2].set_title(r"$\delta^{-1/2}$"+" estimate")
     axs[0, 3].set_title(r"$a$"+" estimate")
     axs[0, 4].set_title("Pe"+" estimate")
 
@@ -2207,7 +2214,11 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
     #fig, axs = plt.subplots(num_cases+2, 5, figsize=(7, (num_cases+2)*(6.5/5)))
     #fig.subplots_adjust(wspace=0.4, hspace=0.2)
-    loc_max = 360
+    # determine loc max: 
+    geom_list = [data["x_samples"].geometry for data in data_diff_list_all]
+    loc_max = max([geom.grid[-1] for geom in geom_list])
+
+    #loc_max = 360
     row_l_x = -180
     row_l_y = 400
     pec_min = -3
@@ -2283,7 +2294,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             plt.xlim(v_min, v_max)
 
 
-            plt.ylabel(r"$\rho(a)$")
+            plt.ylabel(r"$p(a)$")
             plt.gca().yaxis.set_label_coords(0.18, 0.5)
             
             if i==num_cases-1:
@@ -2319,7 +2330,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             plt.xlim(v_min2, v_max2)
 
 
-            plt.ylabel(r"$\rho(\delta^{-1/2})$")
+            plt.ylabel(r"$p(\delta^{-1/2})$")
             plt.gca().yaxis.set_label_coords(0.25, 0.7)
 
             # plot peclet number
@@ -2349,7 +2360,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             
             plt.xlim(pec_min, pec_max)
             #plt.ylim(0, 1.4)
-            plt.ylabel(r"$\rho(\text{Pe})$")
+            plt.ylabel(r"$p(\text{Pe})$")
             plt.gca().yaxis.set_label_coords(0.21, 0.5)
 ##
 
@@ -2419,7 +2430,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.xlim(v_min, v_max)
         plt.xlabel(r"$a$"+" ("+r"$\mu$"+"m/sec.)")
 
-        plt.ylabel(r"$\rho(a)$")
+        plt.ylabel(r"$p(a)$")
         plt.gca().yaxis.set_label_coords(0.18, 0.5) 
 
         plt.sca(axs_bottom[1])
@@ -2432,7 +2443,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.xlim(v_min2, v_max2)
         plt.xlabel(r"$\delta^{-1/2}$")
 
-        plt.ylabel(r"$\rho(\delta^{-1/2})$")
+        plt.ylabel(r"$p(\delta^{-1/2})$")
         plt.gca().yaxis.set_label_coords(0.25, 0.5)
 
         plt.sca(axs_bottom[ 3])
@@ -2453,7 +2464,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
         plt.xlim(pec_min, pec_max)
         #plt.ylim(0, 1.4)
-        plt.ylabel(r"$\rho(\text{Pe})$")
+        plt.ylabel(r"$p(\text{Pe})$")
         plt.gca().yaxis.set_label_coords(0.21, 0.5)
         #plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.8, 0.9), ncol=2, frameon=False)
         plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.3, 1.35), ncol=1, frameon=False)
