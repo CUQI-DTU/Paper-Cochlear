@@ -18,6 +18,10 @@ from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     MH as MHNew)
 import cuqi
 import time
+# choose Helvetica as the default font
+rc = {"font.family" : "Helvetica", 
+      "mathtext.fontset" : "stix"}
+plt.rcParams.update(rc)
 
 try:
     import dill as pickle
@@ -1245,7 +1249,9 @@ def create_args_list(animals, ears, noise_levels, num_ST_list, add_data_pts_list
     return args_list
 
 
-
+# TODO: remove this counter 
+global counter 
+counter = 0
 def peclet_number(a, d, L):
     """Function to compute the peclet number.
     Parameters
@@ -1257,6 +1263,15 @@ def peclet_number(a, d, L):
     L : float
         Length of the domain.
     """ 
+    # TODO: remove this printing
+    global counter
+    counter += 1
+    if counter % 1000 == 0:
+        print('counter', counter)
+        print('a', a)
+        print('d', d)
+        print('L', L)
+        print('a*L/d', a*L/d)
     return a*L/d
 
 def advection_speed(peclet_number, d, L):
@@ -1702,7 +1717,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             kde_peclet = sps.gaussian_kde(samples_peclet)
             pec_min = 0
             pec_max = 50
-            x_peclet = np.linspace(pec_max, pec_min, pec_max)
+            x_peclet = np.linspace(pec_min, pec_max, pec_max)
             l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color="black", label="posterior")
             if i==3:
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
@@ -2195,8 +2210,8 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     loc_max = 360
     row_l_x = -180
     row_l_y = 400
-    pec_min = -50
-    pec_max = 50
+    pec_min = -3
+    pec_max = 3
     pec_num = 100
 
     subfigs[1].delaxes(axs_bottom[-1])
@@ -2312,13 +2327,13 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             np.random.seed(0)
             #a_prior_samples = prior2.sample(100000)
 
-            samples_diff_min = np.array([np.average(data_adv_list[i]['x_samples'].samples[:-1,j]) for j in range(data_adv_list[i]['x_samples'].Ns)])
+            samples_avg_diff = np.array([np.average(data_adv_list[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list[i]['x_samples'].Ns)])
             samples_a = data_adv_list[i]["x_samples"].samples[-1, :].flatten()
-            samples_peclet = np.zeros_like(samples_diff_min)
+            samples_peclet = np.zeros_like(samples_avg_diff)
             for j in range(data_adv_list[i]['x_samples'].Ns):
-                samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_diff_min[j], L=data_diff_list[i]["x_samples"].geometry.grid[-1])
+                samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_avg_diff[j], L=data_diff_list[i]["x_samples"].geometry.grid[-1])
             kde_peclet = sps.gaussian_kde(samples_peclet)
-            x_peclet = np.linspace(pec_max, pec_min, pec_num)
+            x_peclet = np.linspace(pec_min, pec_max, pec_num)
             l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color="black", label="posterior")
 
 
@@ -2333,7 +2348,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
                 # ticks off
             
             plt.xlim(pec_min, pec_max)
-            plt.ylim(0, 0.08)
+            #plt.ylim(0, 1.4)
             plt.ylabel(r"$\rho(\text{Pe})$")
             plt.gca().yaxis.set_label_coords(0.21, 0.5)
 ##
@@ -2343,11 +2358,11 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             # plot scatter plot of mean diffusion and advection
             plt.sca(axs_top[i, 4])
                 # samples of average diffusion
-            samples_diff_avg = np.array([np.average(data_adv_list[i]['x_samples'].samples[:-1,j]) for j in range(data_adv_list[i]['x_samples'].Ns)])
+            samples_avg_diff = np.array([np.average(data_adv_list[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list[i]['x_samples'].Ns)])
             # stack advection and diffusion
             diff_adv = cuqi.samples.Samples(np.vstack(
-                                    (samples_diff_avg, data_adv_list[i]['x_samples'].samples[-1,:])))
-            diff_adv.geometry = cuqi.geometry.MappedGeometry( cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+r"$\mu$"+"m/sec.)"]), data_adv_list[0]['x_samples'].geometry.map)
+                                    (samples_avg_diff, data_adv_list[i]['x_samples'].samples[-1,:])))
+            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+r"$\mu$"+"m/sec.)"])
 
             # plot the correlation
             color_list = ['black']*num_cases
@@ -2425,19 +2440,19 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         np.random.seed(0)
         #a_prior_samples = prior2.sample(100000)
 
-        samples_diff_min = np.array([np.average(data_adv_list_all[i]['x_samples'].samples[:-1,j]) for j in range(data_adv_list_all[i]['x_samples'].Ns)])
+        samples_avg_diff = np.array([np.average(data_adv_list_all[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list_all[i]['x_samples'].Ns)])
         samples_a = data_adv_list_all[i]["x_samples"].samples[-1, :].flatten()
-        samples_peclet = np.zeros_like(samples_diff_min)
+        samples_peclet = np.zeros_like(samples_avg_diff)
         for j in range(data_adv_list_all[i]['x_samples'].Ns):
-            samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_diff_min[j], L=data_diff_list_all[i]["x_samples"].geometry.grid[-1])
+            samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_avg_diff[j], L=data_diff_list_all[i]["x_samples"].geometry.grid[-1])
         kde_peclet = sps.gaussian_kde(samples_peclet)
-        x_peclet = np.linspace(pec_max, pec_min, pec_num)
+        x_peclet = np.linspace(pec_min, pec_max, pec_num)
         l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color=color_list[i], label="posterior")
         lines_list.append(l1[0])
         plt.xlabel("Pe")
 
         plt.xlim(pec_min, pec_max)
-        plt.ylim(0, 0.08)
+        #plt.ylim(0, 1.4)
         plt.ylabel(r"$\rho(\text{Pe})$")
         plt.gca().yaxis.set_label_coords(0.21, 0.5)
         #plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.8, 0.9), ncol=2, frameon=False)
