@@ -788,7 +788,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         color = colormap(np.linspace(0, 1, no_colors))
     if plot_type == 'over_time':
 
-        legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
+        legends = ["{}".format(int(obs))+ " ("+r"$\mu$"+"m)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
@@ -828,7 +828,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
             raise Exception('plot_against must be provided when plot_type is "against_data"')
         if len(plot_against) != len(data):
             raise Exception('plot_against must have the same length as data')
-        legends = ['loc = '+"{:.2f}".format(obs) for obs in locations]
+        legends = ["{}".format(int(obs))+" ("+r"$\mu$"+"m)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker))
@@ -1589,7 +1589,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.ylim(-500, 4000)    
         plt.xlim(real_times[0]/60, real_times[-1]/60)
         plt.ylabel(r"$\boldsymbol{c}$")
-        plt.gca().yaxis.set_label_coords(0.15, 0.5)
+        plt.gca().yaxis.set_label_coords(0.13, 0.5)
         if i == 3:
             plt.legend(lines, labels, loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
             plt.xlabel("Time (min.)")
@@ -1621,10 +1621,10 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.gca().legend().remove()
         plt.xlim(real_locations[0], real_locations[-1])
         plt.ylabel(r"$\boldsymbol{D}$")
-        plt.gca().yaxis.set_label_coords(0.17, d_y_coor)
+        plt.gca().yaxis.set_label_coords(0.15, d_y_coor)
         # for i != 0, plot the prior and posterior of the advection parameter
         if i == 3:
-            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean',  '68% CI ', 'mean', '68% CI', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
             plt.xlabel("Location ("+r"$\mu$"+"m)")
         else:
             plt.xlabel("")
@@ -1670,6 +1670,24 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             plt.gca().tick_params(labelbottom=False) 
         plt.ylabel(r"$p(a)$")
         plt.gca().yaxis.set_label_coords(0.17, 0.5)
+
+        # Define function and its inverse
+        if i != 0:
+            f = lambda x: 0.3*x
+            g = lambda x: x/0.3
+            ax2 = plt.gca().secondary_xaxis("top", functions=(f, g))
+            
+        if i == 1:
+            #ax2.set_xlabel("Volume flow rate (nl/min)")
+            pass
+            ax2.tick_params(direction="in", pad=0, colors='blue')
+            # add text insted of label
+            plt.text(1.7, 0.85, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+
+        
+        elif i > 1:
+            ax2.tick_params(labeltop=False, direction="in", colors='blue')
+            
         # plot the gibbs hyperparameter
         plt.sca(axs[i, 2])
         np.random.seed(0)
@@ -1696,15 +1714,15 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.axvline(true_s, color="r", linestyle="--", label="exact")
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$\delta^{-1/2}$")
+            plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
         else:
             plt.xlabel("")
             # ticks off
             plt.gca().tick_params(labelbottom=False) 
         plt.ylim(0, 6)
         plt.xlim(v_min, v_max)
-        plt.ylabel(r"$p(\delta^{-1/2})$")
-        plt.gca().yaxis.set_label_coords(0.20, 0.7)
+        plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
+        plt.gca().yaxis.set_label_coords(0.17, 0.5)
 
 
         # plot peclet number
@@ -1724,16 +1742,23 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             pec_num = 100
             x_peclet = np.linspace(pec_min, pec_max, pec_num)
             l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color="black", label="posterior")
+            exact_pec = peclet_number(a=true_a, d=np.average(exact.to_numpy()), L=real_locations[-1])
+            plt.axvline(exact_pec, color="r", linestyle="--", label="exact")
+
+
+
             if i==3:
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
                 plt.xlabel("Pe")
             else:
                 plt.xlabel("")
+                
                 # ticks off
                 plt.gca().tick_params(labelbottom=False) 
             plt.xlim(pec_min, pec_max)
             plt.ylabel(r"$p(\text{Pe})$")
             plt.gca().yaxis.set_label_coords(0.17, 0.5)
+            plt.ylim(0, 1.5)
             #plt.ylim(0, 0.08)
 
 
@@ -1745,23 +1770,23 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
     axs[0, 4].axis('off')
 
     # Add labels for the columns:
-    axs[0, 0].set_title("Prediction")
-    axs[0, 1].set_title(r"$\boldsymbol{D}$"+" estimate")
-    axs[0, 2].set_title(r"$\delta^{-1/2}$"+" estimate")
-    axs[0, 3].set_title(r"$a$"+" estimate")
-    axs[0, 4].set_title("Pe"+" estimate")
+    axs[0, 0].set_title("Prediction\n")
+    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n")
+    axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)")
+    axs[0, 3].set_title("Inferred "+r"$a$"+" ("+r"$\mu$"+"m/sec.)\n ")
+    axs[0, 4].set_title("Inferred "+"Pe\n")
 
     # Add labels for the rows not using the y label
     row_l_x = -18
     row_l_y = 2000
     plt.sca(axs[0, 0])
-    plt.text(row_l_x, row_l_y, "Diff. only", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center') 
+    plt.text(row_l_x, row_l_y, "Diffusion only \n" +r"$(a="+str(0)+r")$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center') 
     plt.sca(axs[1, 0])
-    plt.text(row_l_x, row_l_y,r"$a="+str(data_list[1]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+    plt.text(row_l_x, row_l_y,"Advection-\ndiffusion\n" + r"$a="+str(data_list[1]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
     plt.sca(axs[2, 0])
-    plt.text(row_l_x, row_l_y, r"$a="+str(data_list[2]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+    plt.text(row_l_x, row_l_y, "Advection-\ndiffusion\n" +r"$a="+str(data_list[2]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
     plt.sca(axs[3, 0])
-    plt.text(row_l_x, row_l_y, r"$a="+str(data_list[3]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+    plt.text(row_l_x, row_l_y, "Advection-\ndiffusion\n" +r"$a="+str(data_list[3]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
 
 def plot_v3_fig1( data_diff_list, data_adv_list):
@@ -2321,7 +2346,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
             #plt.legend()
             if i==num_cases-1:
-                plt.xlabel(r"$\delta^{-1/2}$")
+                plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
             else:
                 plt.xlabel("")
@@ -2330,7 +2355,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             plt.xlim(v_min2, v_max2)
 
 
-            plt.ylabel(r"$p(\delta^{-1/2})$")
+            plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
             plt.gca().yaxis.set_label_coords(0.25, 0.7)
 
             # plot peclet number
@@ -2441,9 +2466,9 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         x2 = np.linspace(v_min2, v_max2, 100)
         l1 = plt.plot(x2, kde_2(x2), color=color_list[i], label='posterior')
         plt.xlim(v_min2, v_max2)
-        plt.xlabel(r"$\delta^{-1/2}$")
+        plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
 
-        plt.ylabel(r"$p(\delta^{-1/2})$")
+        plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
         plt.gca().yaxis.set_label_coords(0.25, 0.5)
 
         plt.sca(axs_bottom[ 3])
@@ -2476,11 +2501,11 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     #fig.delaxes(axs[num_cases, 3])
 
     # Add labels for the columns:
-    axs_top[0, 0].set_title(r"$\boldsymbol{D}$"+" estimate")
-    axs_top[0, 1].set_title(r"$\delta^{-1/2}$"+" estimate") # \rho()
-    axs_top[0, 2].set_title(r"$a$"+" estimate")
-    axs_top[0, 3].set_title("Pe"+" estimate")
-    axs_top[0, 4].set_title("Corr. plot")
+    axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n ")
+    axs_top[0, 1].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)") # \rho()
+    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+r"$\mu$"+"m/sec.)"+"\n ")
+    axs_top[0, 3].set_title("Inferred "+"Pe\n ")
+    axs_top[0, 4].set_title("Correlation \nplot")
 
     # Add labels for the rows not using the y label
 
