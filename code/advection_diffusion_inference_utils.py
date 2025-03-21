@@ -2449,6 +2449,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     
     lines_list = []
     labels_list = []
+    all_samples_a = []
     for i in range(len(data_diff_list_all)):
         labels_list.append(data_diff_list_all[i]['experiment_par'].animal+', '+data_diff_list_all[i]['experiment_par'].ear)
         plt.sca(axs_bottom[0])
@@ -2489,7 +2490,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
 
         plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
-        plt.gca().yaxis.set_label_coords(0.25, 0.5)
+        plt.gca().yaxis.set_label_coords(0.20, 0.5)
 
         plt.sca(axs_bottom[ 3])
         # plot peclet number
@@ -2498,6 +2499,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
         samples_avg_diff = np.array([np.average(data_adv_list_all[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list_all[i]['x_samples'].Ns)])
         samples_a = data_adv_list_all[i]["x_samples"].samples[-1, :].flatten()
+        all_samples_a.append(samples_a)
         samples_peclet = np.zeros_like(samples_avg_diff)
         for j in range(data_adv_list_all[i]['x_samples'].Ns):
             samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_avg_diff[j], L=data_diff_list_all[i]["x_samples"].geometry.grid[-1])
@@ -2531,3 +2533,5 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
     plt.sca(axs_bottom[0])
     plt.text(row_l_x, row_l_y, "All cases", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+
+    return all_samples_a
