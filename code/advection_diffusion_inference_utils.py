@@ -788,7 +788,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         color = colormap(np.linspace(0, 1, no_colors))
     if plot_type == 'over_time':
 
-        legends = ["{}".format(int(obs))+ " ("+r"$\mu$"+"m)" for obs in locations]
+        legends = ["{}".format(int(obs))+ " ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
@@ -828,7 +828,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
             raise Exception('plot_against must be provided when plot_type is "against_data"')
         if len(plot_against) != len(data):
             raise Exception('plot_against must have the same length as data')
-        legends = ["{}".format(int(obs))+" ("+r"$\mu$"+"m)" for obs in locations]
+        legends = ["{}".format(int(obs))+" ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker))
@@ -1625,7 +1625,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         # for i != 0, plot the prior and posterior of the advection parameter
         if i == 3:
             plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean',  '68% CI ', 'mean', '68% CI', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel("Location ("+r"$\mu$"+"m)")
+            plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
         else:
             plt.xlabel("")
             # ticks off
@@ -1663,7 +1663,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.xlim(v_min, v_max)
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$a$"+" ("+r"$\mu$"+"m/sec.)")
+            plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1773,7 +1773,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
     axs[0, 0].set_title("Prediction\n")
     axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n")
     axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)")
-    axs[0, 3].set_title("Inferred "+r"$a$"+" ("+r"$\mu$"+"m/sec.)\n ")
+    axs[0, 3].set_title("Inferred "+r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)\n ")
     axs[0, 4].set_title("Inferred "+"Pe\n")
 
     # Add labels for the rows not using the y label
@@ -2240,7 +2240,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     #fig, axs = plt.subplots(num_cases+2, 5, figsize=(7, (num_cases+2)*(6.5/5)))
     #fig.subplots_adjust(wspace=0.4, hspace=0.2)
     # determine loc max: 
-    geom_list = [data["x_samples"].geometry for data in data_diff_list_all]
+    geom_list = [data["x_samples"].geometry for data in data_diff_list]
     loc_max = max([geom.grid[-1] for geom in geom_list])
 
     #loc_max = 360
@@ -2259,13 +2259,15 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         
         try:
             l_ci2 = cuqi.samples.Samples(data_adv_list[i]['x_samples'].samples[:-1,:], geometry=data_diff_list[i]['x_samples'].geometry).funvals.plot_ci( 68, plot_envelope_kwargs={'facecolor': 'gray', 'edgecolor': 'gray'}, color='gray')
+            # plot line of level 368 (thin line)
+            l_ref = plt.plot([0, geom_list[i].grid[-1]], [368, 368], color='black', linestyle='--', linewidth=0.5)
         except:
             pass
         # plot legend before first column
         legend_x = 0.5
         legend_y = -.5
         if i == 3:
-            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc="upper center", ncol=1, frameon=False)
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)"], loc="upper center", ncol=1, frameon=False)
             print("legend_X", legend_x)
             plt.gca().legend_.set_bbox_to_anchor((legend_x, legend_y))
             #plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -1.7), ncol=4)
@@ -2289,7 +2291,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
         plt.xlim(0, loc_max)
         if i==num_cases-1:
-            plt.xlabel(r"Location ($\mu$m)")
+            plt.xlabel(r"Location ($\mu\mathrm{m}$)")
         else:
             plt.xlabel("")
             # keep ticks but remove ticks labels for x 
@@ -2321,9 +2323,25 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
             plt.ylabel(r"$p(a)$")
             plt.gca().yaxis.set_label_coords(0.18, 0.5)
-            
+            plt.ylim(0, 0.8)
+
+
+            f = lambda x: 0.3*x
+            g = lambda x: x/0.3
+            ax2 = plt.gca().secondary_xaxis("top", functions=(f, g))
+                
+            if i == 0:
+                #ax2.set_xlabel("Volume flow rate (nl/min)")
+                pass
+                ax2.tick_params(direction="in", pad=1, colors='blue')
+                # add text insted of label
+                plt.text(-1.45, 0.65, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+
+            else:
+                ax2.tick_params(labeltop=False, direction="in", colors='blue')
+
             if i==num_cases-1:
-                plt.xlabel(r"$a$"+" ("+r"$\mu$"+"m/sec.)")
+                plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
             else:
                 plt.xlabel("")
                 # keep ticks but remove ticks labels for x 
@@ -2356,7 +2374,8 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
 
             plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
-            plt.gca().yaxis.set_label_coords(0.25, 0.7)
+            plt.gca().yaxis.set_label_coords(0.20, 0.55)
+            plt.ylim(0, 1.2)
 
             # plot peclet number
             plt.sca(axs_top[i, 3])
@@ -2387,6 +2406,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             #plt.ylim(0, 1.4)
             plt.ylabel(r"$p(\text{Pe})$")
             plt.gca().yaxis.set_label_coords(0.21, 0.5)
+            plt.ylim(0, 1.2)
 ##
 
 
@@ -2398,7 +2418,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             # stack advection and diffusion
             diff_adv = cuqi.samples.Samples(np.vstack(
                                     (samples_avg_diff, data_adv_list[i]['x_samples'].samples[-1,:])))
-            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+r"$\mu$"+"m/sec.)"])
+            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)"])
 
             # plot the correlation
             color_list = ['black']*num_cases
@@ -2438,7 +2458,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.ylim(diff_min, diff_max)
 
         plt.xlim(0, loc_max)
-        plt.xlabel("Location ("+r"$\mu$"+"m)")
+        plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
         plt.ylabel(r"$\boldsymbol{D}$")
         plt.gca().yaxis.set_label_coords(0.17, 0.2)
 
@@ -2453,7 +2473,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         l1 = plt.plot(x, kde(x), color=color_list[i],
                       label='posterior')
         plt.xlim(v_min, v_max)
-        plt.xlabel(r"$a$"+" ("+r"$\mu$"+"m/sec.)")
+        plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
 
         plt.ylabel(r"$p(a)$")
         plt.gca().yaxis.set_label_coords(0.18, 0.5) 
@@ -2503,7 +2523,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     # Add labels for the columns:
     axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n ")
     axs_top[0, 1].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)") # \rho()
-    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+r"$\mu$"+"m/sec.)"+"\n ")
+    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+r"$\mu\mathrm{m}$"+"/sec.)"+"",pad=17)
     axs_top[0, 3].set_title("Inferred "+"Pe\n ")
     axs_top[0, 4].set_title("Correlation \nplot")
 
