@@ -1907,7 +1907,13 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
                              real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
             #print(data_diff_list[i]['experiment_par'])
             ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
-            plt.ylabel('Concentration\nsignal, mouse'+data_diff_list[i]['experiment_par'].animal[1]+' '+ear_str)#, horizontalalignment='center', verticalalignment='center')
+            row_l_x = -14
+            row_l_y = 3000
+            plt.text(row_l_x, row_l_y, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+
+            plt.ylabel(r"$\boldsymbol{c}$")
+            plt.gca().yaxis.set_label_coords(0.1,0.5)
+            #plt.ylabel('Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str)#, horizontalalignment='center', verticalalignment='center')
             # plot legend inside the plot
             # bbox_to_anchor=(1, 0.5)
             if i == 0:
@@ -2537,7 +2543,10 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.ylabel(r"$\boldsymbol{D}$")
         plt.gca().yaxis.set_label_coords(0.17, d_y_coor)
 
-        plt.text(row_l_x, row_l_y, data_diff_list[i]['experiment_par'].animal+', '+data_diff_list[i]['experiment_par'].ear, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center') 
+
+        ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
+
+        plt.text(row_l_x, row_l_y, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center') 
 
         plt.xlim(0, loc_max)
         if i==num_cases-1:
