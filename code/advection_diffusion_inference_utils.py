@@ -1822,6 +1822,256 @@ def plot_v3_fig1( data_diff_list, data_adv_list):
 
         plt.legend(lines, legends, loc='center left', bbox_to_anchor=(1, 0.5))
 
+def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
+    # fig_v = "I" or "II" or "III"
+                
+    # Create a figure with 10 rows and 3 columns. First column is for the
+    # data, second column is for the prediction from the diffusion model,
+    # and the third column is for the prediction from the advection model.
+    num_cases = len(data_diff_list)
+    # set matplotlib parameters
+    SMALL_SIZE = 7
+    MEDIUM_SIZE =8
+    BIGGER_SIZE = 9
+    matplotlib_setup(SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE)
+
+    y_min = 0
+    y_max = 3000
+    x_min = 0
+    x_max= 300
+    clip_on=False
+    #plt.rcParams['figure.constrained_layout.use'] = True
+    #plt.rcParams['figure.subplot.hspace']= 0.02
+    fig =  plt.figure(figsize=(7.2, 1.4*(num_cases))) # exception width is 7.2 instead of 7 (because of white space on the right side)
+    
+    subfigs = fig.subfigures(1, 2, width_ratios=[1, 1], wspace=0.0)
+    #fig.subplots_adjust(wspace=0.0)
+
+    axs_left = subfigs[0].subplots(num_cases, 2 , sharex=True, sharey=True)
+    # set hspace and wspace for the top subfigure
+
+                                   #, hspace=0.2, wspace=0.4)
+    axs_right = subfigs[1].subplots(num_cases, 2, sharex=True, sharey=True)
+                                   #, hspace=0.2, wspace=0.4)
+    # hspace=0.2, wspace=0.4)
+    subfigs[0].subplots_adjust(hspace=0.25, wspace=0.43, right=1, left=0.17)#, bottom
+
+    subfigs[1].subplots_adjust(hspace=0.25, wspace=0.45, right=0.87, left=0.04)#, bottom=0.02)
+    
+
+    #fig.subplots_adjust(hspace=0.02)
+    #plt.subplots_adjust(hspace=0.0)
+
+
+           
+            
+    if True:
+        # same as version one but two columns, plot the real data overlaid with the prediction
+        #fig, axs = plt.subplots(num_cases, 4, figsize=(7, 1.6*(num_cases)), layout="constrained")
+
+        # increase h space
+        #plt.subplots_adjust(wspace=0.3)
+        # print(data_adv_list[0].keys())
+        # dict_keys(['exact', 'exact_data', 'data', 'mean_recon_data', 'x_samples', 's_samples', 'experiment_par', 'locations', 'times', 'lapse_time', 'num_tree_node_list', 'epsilon_list'])
+        for i in range(len(data_diff_list)):
+            plot_type = 'over_time'
+            colormap = colormaps[0]
+            # Plot the data
+
+
+            #if i == 0:
+            #    plt.title("Real data")
+
+            real_times, real_locations, real_data, real_std_data, diff_locations, real_data_diff, real_std_data_diff = read_data_files(data_diff_list[i]['experiment_par'])
+
+            # Update y_min and y_max, and x_max
+            y_min = min(y_min, real_data.min())
+            y_max = max(y_max, real_data.max())
+            x_max = max(x_max, real_locations.max())
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+
+
+            plt.sca(axs_left[i, 0])
+            lines, legends = plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+            #switch of ticks and label of y
+
+            
+
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+            #print(data_diff_list[i]['experiment_par'])
+            ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
+            plt.ylabel('Concentration\nsignal, mouse'+data_diff_list[i]['experiment_par'].animal[1]+' '+ear_str)#, horizontalalignment='center', verticalalignment='center')
+            # plot legend inside the plot
+            # bbox_to_anchor=(1, 0.5)
+            if i == 0:
+                plt.title("Diffusion\nmodel prediction\n(plotted over time)")
+            # plot legend outside the plot to the left
+            plt.legend(lines, legends,
+                        fontsize=SMALL_SIZE, frameon=False, ncol=1,
+                        columnspacing=0.1, handletextpad=0.1, handlelength=0.5,
+                        loc='upper right',
+                        bbox_to_anchor=(0.97, 1.07),  mode="expand")
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data_adv = A.pde._solution_obs
+
+                plt.sca(axs_left[i, 1])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data_adv, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+                #switch of ticks and label of y
+                plot_time_series(real_times, real_locations,
+                real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+                plt.ylabel('')
+
+                
+
+                if i == 0:
+                    plt.title("Advection-diffusion\nmodel prediction\n(plotted over time)")
+                #plt.text(20, 4000, "mean a\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1]), fontsize=10)
+            except:
+                pass
+
+            # Plot the difference between the advection and the diffusion model
+            #---
+            plot_type = 'over_location'
+            colormap = colormaps[1]
+            # Plot the data
+
+
+            #if i == 0:
+            #    plt.title("Real data")
+
+
+            # Plot the prediction from the diffusion model
+            #---
+            A = create_A(data_diff_list[i]) 
+            mean_recon_data = \
+                A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
+            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+
+
+            plt.sca(axs_right[i, 0])
+            lines, legends = plot_time_series(real_times, real_locations,
+                             non_grad_mean_recon_data_diffu, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+            #switch of ticks and label of y
+            plt.ylabel('')
+            
+
+            plot_time_series(real_times, real_locations,
+                             real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+            #print(data_diff_list[i]['experiment_par'])
+            plt.ylabel('')
+            # legend
+            plt.legend(lines, legends,
+                       fontsize=SMALL_SIZE, frameon=False, ncol=1,
+                       columnspacing=0.1, handletextpad=0.1, handlelength=0.5,
+                       loc='upper right',
+                        bbox_to_anchor=(0.97, 1.1), mode="expand")              
+            if i == 0:
+                plt.title("Diffusion\nmodel prediction\n(plotted over location)") 
+            #---
+            # Plot the prediction from the advection model
+            #---
+            try:
+                A = create_A(data_adv_list[i])
+                mean_recon_data = \
+                    A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
+                non_grad_mean_recon_data_adv = A.pde._solution_obs
+
+                plt.sca(axs_right[i, 1])
+                lines, legends = plot_time_series(real_times, real_locations,
+                                 non_grad_mean_recon_data_adv, plot_legend=False, plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+                #switch of ticks and label of y
+                plot_time_series(real_times, real_locations,
+                real_data.reshape(len(real_locations), len(real_times)), plot_legend=False, marker = '*', linestyle = 'None', plot_type=plot_type, colormap=colormap, y_log=y_log, clip_on=clip_on)
+                plt.ylabel('')
+        
+
+                if i == 0:
+                    plt.title("Advection-diffusion\nmodel prediction\n(plotted over location)")
+                    #("Diffusion-advection\n model prediction")
+                plt.text(260, 3750, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+r"$\mu\mathrm{m}$"+"/sec.)", fontsize=8, horizontalalignment='center')
+            except:
+                pass
+
+            # Plot the difference between the advection and the diffusion model
+            #---
+        aspect = 1.2 * (x_max - x_min) / (y_max - y_min)
+        for i in range(len(data_diff_list)):
+            plt.sca(axs_left[i, 0])
+            plt.ylim(y_min, y_max)
+            #plt.gca().set(aspect=aspect)
+
+            # if not last row, remove x label and ticks
+            if i != len(data_diff_list) - 1:
+                plt.tick_params(labelbottom=False)
+                #plt.xlabel('')
+                plt.gca().axes.get_xaxis().get_label().set_visible(False)
+            else:
+                plt.xlabel("Time (min.)")
+
+            plt.sca(axs_left[i, 1])
+            plt.ylim(y_min, y_max)
+            #plt.gca().set(aspect=aspect)
+            # remove y label and ticks
+            plt.tick_params(labelleft=False)
+            plt.ylabel('')
+
+            # if not last row, remove x label and ticks
+            if i != len(data_diff_list) - 1:
+                plt.tick_params(labelbottom=False)
+                #plt.xlabel('')
+                plt.gca().axes.get_xaxis().get_label().set_visible(False)
+            else:
+                plt.xlabel("Time (min.)")
+
+            plt.sca(axs_right[i, 0])
+            plt.ylim(y_min, y_max)
+            plt.xlim(x_min, x_max)
+            #plt.gca().set(aspect=aspect)
+            # remove y label and ticks
+            plt.tick_params(labelleft=False)
+            plt.ylabel('')
+
+            # if not last row, remove x label and ticks
+            if i != len(data_diff_list) - 1:
+                plt.tick_params(labelbottom=False)
+                #plt.xlabel('')
+                plt.gca().axes.get_xaxis().get_label().set_visible(False)
+            else:
+                plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+
+            plt.sca(axs_right[i, 1])
+            plt.ylim(y_min, y_max)
+            plt.xlim(x_min, x_max)
+            #plt.gca().set(aspect=aspect)
+            # remove y label and ticks labels
+            plt.tick_params(labelleft=False)
+            plt.ylabel('')
+
+            # if not last row, remove x label and ticks
+            if i != len(data_diff_list) - 1:
+                plt.tick_params(labelbottom=False)
+                #plt.xlabel('')
+                # turn off xlabel
+                plt.gca().axes.get_xaxis().get_label().set_visible(False)
+
+            else:
+                plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+            
+
 def plot_v3_fig1_b( data_diff_list, data_adv_list, fig_v="I", plot_type='over_time', colormap=None, y_log=False, y_min=0, y_max=5750):
     # fig_v = "I" or "II" or "III"
                 
