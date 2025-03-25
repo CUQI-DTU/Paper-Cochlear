@@ -778,7 +778,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
     
     return posterior_samples_burnthin, my_sampler
 
-def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_time', d3_alpha=0, marker=None, linestyle='-', colormap=None, y_log=False, plot_against=None):
+def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_time', d3_alpha=0, marker=None, linestyle='-', colormap=None, y_log=False, plot_against=None, clip_on=True):
     # Plot data
     # plot type can be 'over_time' or 'over_location' or 'surface'
     if colormap is None:
@@ -791,7 +791,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         legends = ["{}".format(int(obs))+ " ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
         lines = []
         for i in range(len(locations)):
-            lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
+            lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle, clip_on=clip_on)[0])
         
         if plot_legend:
             plt.legend(lines, legends)
@@ -800,10 +800,10 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         
 
     elif plot_type == 'over_location':
-        legends = ['time = '+"{:.2f}".format(obs/60) for obs in times]
+        legends = ["{} (min.)".format(int(obs/60)) for obs in times]
         lines = []
         for i in range(len(times)):
-            lines.append(plt.plot(locations, data[:,i],  color=color[i%len(color)],marker=marker, linestyle=linestyle)[0])
+            lines.append(plt.plot(locations, data[:,i],  color=color[i%len(color)],marker=marker, linestyle=linestyle, clip_on=clip_on)[0])
         
         if plot_legend:
             plt.legend(lines, legends)
@@ -831,7 +831,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         legends = ["{}".format(int(obs))+" ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
         lines = []
         for i in range(len(locations)):
-            lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker))
+            lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker, clip_on=clip_on))
 
         if plot_legend:
             plt.legend(lines, legends)
