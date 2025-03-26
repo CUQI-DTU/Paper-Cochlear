@@ -2471,7 +2471,7 @@ def plot_v3_intro_data(data_diff_list, data_adv_list, plot_type='over_time'):
     #plt.ylabel('Concentration')
 
 
-def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_list_all, diff_min=100, diff_max=750, d_y_coor=0.4):
+def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_list_all, diff_min=100, diff_max=750, add_last_row=True):
     # create a 10 by 3 plot, each row is for a different animal and ear
     # the first column is for the credibility interval of the inferred
     # diffusion parameter, the second column is for the prior and posterior
@@ -2485,12 +2485,20 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     # create 2 subfigures top and bottom with aspec ratio 4:1
 
     fig =  plt.figure(figsize=(7, (num_cases+1)*(6.5/5)))
-    subfigs = fig.subfigures(2, 1, height_ratios=[4, 1])
-    axs_top = subfigs[0].subplots(num_cases, 5)
-    # set hspace and wspace for the top subfigure
-    subfigs[0].subplots_adjust(hspace=0.2, wspace=0.4, bottom=0.2)
+
+    if add_last_row:
+        subfigs = fig.subfigures(2, 1, height_ratios=[4, 1])
+        axs_top = subfigs[0].subplots(num_cases, 5)
+        # set hspace and wspace for the top subfigure
+        subfigs[0].subplots_adjust(hspace=0.2, wspace=0.4, bottom=0.2)
                                    #, hspace=0.2, wspace=0.4)
-    axs_bottom = subfigs[1].subplots(1, 5)# hspace=0.2, wspace=0.4)
+        axs_bottom = subfigs[1].subplots(1, 5)# hspace=0.2, wspace=0.4)
+        subfigs[1].delaxes(axs_bottom[-1])
+    else:
+        subfigs = fig.subfigures(1, 1)
+        axs_top = subfigs.subplots(num_cases, 5)
+        # set hspace and wspace for the top subfigure
+        subfigs.subplots_adjust(hspace=0.2, wspace=0.4, bottom=0.2)
 
 
     #fig, axs = plt.subplots(num_cases+2, 5, figsize=(7, (num_cases+2)*(6.5/5)))
@@ -2506,7 +2514,6 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     pec_max = 3
     pec_num = 100
 
-    subfigs[1].delaxes(axs_bottom[-1])
 
     for i in range(len(data_diff_list)):
         # Plot the credibility interval of the inferred diffusion parameter
@@ -2522,7 +2529,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         # plot legend before first column
         legend_x = 0.5
         legend_y = -.5
-        if i == 3:
+        if i == num_cases-1:
             plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)"], loc="upper center", ncol=1, frameon=False)
             print("legend_X", legend_x)
             plt.gca().legend_.set_bbox_to_anchor((legend_x, legend_y))
@@ -2541,7 +2548,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         plt.ylim(diff_min, diff_max)
         # add mouse number and ear in the y label
         plt.ylabel(r"$\boldsymbol{D}$")
-        plt.gca().yaxis.set_label_coords(0.17, d_y_coor)
+        plt.gca().yaxis.set_label_coords(0.17, 0.9)
 
 
         ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
@@ -2571,7 +2578,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             kde = sps.gaussian_kde(data_adv_list[i]['x_samples'].samples[-1,:].flatten())
             x = np.linspace(v_min, v_max, 100)
             l1 = plt.plot(x, kde(x), color='black', label='posterior')
-            if i == 3:
+            if i == num_cases-1:
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
 
             #if i==0:
@@ -2582,7 +2589,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
             plt.ylabel(r"$p(a)$")
             plt.gca().yaxis.set_label_coords(0.18, 0.5)
-            plt.ylim(0, 0.8)
+            plt.ylim(0, 1)
 
 
             f = lambda x: 0.3*x
@@ -2594,7 +2601,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
                 pass
                 ax2.tick_params(direction="in", pad=1, colors='blue')
                 # add text insted of label
-                plt.text(-1.45, 0.65, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+                plt.text(-1.45, 0.8, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
 
             else:
                 ax2.tick_params(labeltop=False, direction="in", colors='blue')
@@ -2634,7 +2641,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
             plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
             plt.gca().yaxis.set_label_coords(0.20, 0.55)
-            plt.ylim(0, 1.2)
+            plt.ylim(0, 1.5)
 
             # plot peclet number
             plt.sca(axs_top[i, 3])
@@ -2706,76 +2713,77 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     else:
         color_list = [colormap(i) for i in np.linspace(0, 1, len(data_diff_list_all))]
     
-    lines_list = []
-    labels_list = []
-    all_samples_a = []
-    for i in range(len(data_diff_list_all)):
-        labels_list.append(data_diff_list_all[i]['experiment_par'].animal+', '+data_diff_list_all[i]['experiment_par'].ear)
-        plt.sca(axs_bottom[0])
-        # plot all the means
-        l_ci4 = cuqi.samples.Samples(data_adv_list_all[i]['x_samples'].samples[:-1,:], geometry=data_diff_list_all[i]['x_samples'].geometry).plot_mean(color=color_list[i])
-        plt.title("")
-        plt.ylim(diff_min, diff_max)
-
-        plt.xlim(0, loc_max)
-        plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
-        plt.ylabel(r"$\boldsymbol{D}$")
-        plt.gca().yaxis.set_label_coords(0.17, 0.2)
-
-        plt.sca(axs_bottom[2])
-        # plot all the posteriors and a prior of the advection parameter
-        if i == 0:
-            cuqi.utilities.plot_1D_density(prior2, v_min=v_min, v_max=v_max, color='b',label='prior')
-                    
-        kde = sps.gaussian_kde(data_adv_list_all[i]['x_samples'].samples[-1,:].flatten())
-        x = np.linspace(v_min, v_max, 100)
-
-        l1 = plt.plot(x, kde(x), color=color_list[i],
-                      label='posterior')
-        plt.xlim(v_min, v_max)
-        plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
-
-        plt.ylabel(r"$p(a)$")
-        plt.gca().yaxis.set_label_coords(0.18, 0.5) 
-
-        plt.sca(axs_bottom[1])
-        # plot all the posteriors and a prior of the gibbs parameter
-        if i == 0:
-            l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
-        kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list_all[i]['s_samples'].samples.flatten()))
-        x2 = np.linspace(v_min2, v_max2, 100)
-        l1 = plt.plot(x2, kde_2(x2), color=color_list[i], label='posterior')
-        plt.xlim(v_min2, v_max2)
-        plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
-
-        plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
-        plt.gca().yaxis.set_label_coords(0.20, 0.5)
-
-        plt.sca(axs_bottom[ 3])
-        # plot peclet number
-        np.random.seed(0)
-        #a_prior_samples = prior2.sample(100000)
-
-        samples_avg_diff = np.array([np.average(data_adv_list_all[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list_all[i]['x_samples'].Ns)])
-        samples_a = data_adv_list_all[i]["x_samples"].samples[-1, :].flatten()
-        all_samples_a.append(samples_a)
-        samples_peclet = np.zeros_like(samples_avg_diff)
-        for j in range(data_adv_list_all[i]['x_samples'].Ns):
-            samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_avg_diff[j], L=data_diff_list_all[i]["x_samples"].geometry.grid[-1])
-        kde_peclet = sps.gaussian_kde(samples_peclet)
-        x_peclet = np.linspace(pec_min, pec_max, pec_num)
-        l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color=color_list[i], label="posterior")
-        lines_list.append(l1[0])
-        plt.xlabel("Pe")
-
-        plt.xlim(pec_min, pec_max)
-        #plt.ylim(0, 1.4)
-        plt.ylabel(r"$p(\text{Pe})$")
-        plt.gca().yaxis.set_label_coords(0.21, 0.5)
-        #plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.8, 0.9), ncol=2, frameon=False)
-        plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.3, 1.35), ncol=1, frameon=False)
-
-
+    if add_last_row:
+        lines_list = []
+        labels_list = []
+        all_samples_a = []
+        for i in range(len(data_diff_list_all)):
+            labels_list.append(data_diff_list_all[i]['experiment_par'].animal+', '+data_diff_list_all[i]['experiment_par'].ear)
+            plt.sca(axs_bottom[0])
+            # plot all the means
+            l_ci4 = cuqi.samples.Samples(data_adv_list_all[i]['x_samples'].samples[:-1,:], geometry=data_diff_list_all[i]['x_samples'].geometry).plot_mean(color=color_list[i])
+            plt.title("")
+            plt.ylim(diff_min, diff_max)
+    
+            plt.xlim(0, loc_max)
+            plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+            plt.ylabel(r"$\boldsymbol{D}$")
+            plt.gca().yaxis.set_label_coords(0.17, 0.9)
+    
+            plt.sca(axs_bottom[2])
+            # plot all the posteriors and a prior of the advection parameter
+            if i == 0:
+                cuqi.utilities.plot_1D_density(prior2, v_min=v_min, v_max=v_max, color='b',label='prior')
+                        
+            kde = sps.gaussian_kde(data_adv_list_all[i]['x_samples'].samples[-1,:].flatten())
+            x = np.linspace(v_min, v_max, 100)
+    
+            l1 = plt.plot(x, kde(x), color=color_list[i],
+                          label='posterior')
+            plt.xlim(v_min, v_max)
+            plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
+    
+            plt.ylabel(r"$p(a)$")
+            plt.gca().yaxis.set_label_coords(0.18, 0.5) 
+    
+            plt.sca(axs_bottom[1])
+            # plot all the posteriors and a prior of the gibbs parameter
+            if i == 0:
+                l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
+            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list_all[i]['s_samples'].samples.flatten()))
+            x2 = np.linspace(v_min2, v_max2, 100)
+            l1 = plt.plot(x2, kde_2(x2), color=color_list[i], label='posterior')
+            plt.xlim(v_min2, v_max2)
+            plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
+    
+            plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
+            plt.gca().yaxis.set_label_coords(0.20, 0.5)
+    
+            plt.sca(axs_bottom[ 3])
+            # plot peclet number
+            np.random.seed(0)
+            #a_prior_samples = prior2.sample(100000)
+    
+            samples_avg_diff = np.array([np.average(data_adv_list_all[i]['x_samples'].samples[:-1,j]**2) for j in range(data_adv_list_all[i]['x_samples'].Ns)])
+            samples_a = data_adv_list_all[i]["x_samples"].samples[-1, :].flatten()
+            all_samples_a.append(samples_a)
+            samples_peclet = np.zeros_like(samples_avg_diff)
+            for j in range(data_adv_list_all[i]['x_samples'].Ns):
+                samples_peclet[j] = peclet_number(a=samples_a[j], d=samples_avg_diff[j], L=data_diff_list_all[i]["x_samples"].geometry.grid[-1])
+            kde_peclet = sps.gaussian_kde(samples_peclet)
+            x_peclet = np.linspace(pec_min, pec_max, pec_num)
+            l1 = plt.plot(x_peclet, kde_peclet(x_peclet), color=color_list[i], label="posterior")
+            lines_list.append(l1[0])
+            plt.xlabel("Pe")
+    
+            plt.xlim(pec_min, pec_max)
+            #plt.ylim(0, 1.4)
+            plt.ylabel(r"$p(\text{Pe})$")
+            plt.gca().yaxis.set_label_coords(0.21, 0.5)
+            #plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.8, 0.9), ncol=2, frameon=False)
+            plt.legend(lines_list, labels_list, loc="upper right", bbox_to_anchor=(2.3, 1.35), ncol=1, frameon=False)
+    
+    
 
     # remove axs[4, 4]
 
@@ -2788,9 +2796,11 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     axs_top[0, 3].set_title("Inferred "+"Pe\n ")
     axs_top[0, 4].set_title("Correlation \nplot")
 
-    # Add labels for the rows not using the y label
+    if add_last_row:
+        # Add labels for the rows not using the y label
+        plt.sca(axs_bottom[0])
+        plt.text(row_l_x, row_l_y, "All cases", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
-    plt.sca(axs_bottom[0])
-    plt.text(row_l_x, row_l_y, "All cases", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
-
-    return all_samples_a
+        return all_samples_a
+    else:
+        return None
