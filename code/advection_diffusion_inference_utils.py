@@ -788,7 +788,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         color = colormap(np.linspace(0, 1, no_colors))
     if plot_type == 'over_time':
 
-        legends = ["{}".format(int(obs))+ " ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
+        legends = ["{}".format(int(obs))+ u" (\u03bcm)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle, clip_on=clip_on)[0])
@@ -828,7 +828,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
             raise Exception('plot_against must be provided when plot_type is "against_data"')
         if len(plot_against) != len(data):
             raise Exception('plot_against must have the same length as data')
-        legends = ["{}".format(int(obs))+" ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
+        legends = ["{}".format(int(obs))+u" (\u03bcm)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker, clip_on=clip_on))
@@ -1625,7 +1625,8 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         # for i != 0, plot the prior and posterior of the advection parameter
         if i == 3:
             plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean',  '68% CI ', 'mean', '68% CI', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+            #plt.xlabel("Location ("""+r"$\mu\mathrm{m}$"+")")
+            plt.xlabel("Location ("+u"\u03bcm"+")")
         else:
             plt.xlabel("")
             # ticks off
@@ -1663,7 +1664,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.xlim(v_min, v_max)
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
+            plt.xlabel(r"$a$"+u" (\u03bcm/sec.)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1682,7 +1683,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             pass
             ax2.tick_params(direction="in", pad=0, colors='blue')
             # add text insted of label
-            plt.text(1.7, 0.85, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+            plt.text(1.7, 0.85, r"$Q$"+"\n(nl/min.)", ha='center', va='center', color='blue') #transform=ax2.transAxes
 
         
         elif i > 1:
@@ -1714,7 +1715,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.axvline(true_s, color="r", linestyle="--", label="exact")
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
+            plt.xlabel(r"$\sigma_\mathrm{noise}$"+r" (for $c$ gradient)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1771,9 +1772,9 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
 
     # Add labels for the columns:
     axs[0, 0].set_title("Prediction\n")
-    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n")
-    axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)")
-    axs[0, 3].set_title("Inferred "+r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)\n ")
+    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+u" (\u03bcm"+r"$^2$"+"/sec.)\n")
+    axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n"+r" (for $c$ gradient)")
+    axs[0, 3].set_title("Inferred "+r"$a$"+u" (\u03bcm/sec.)\n ")
     axs[0, 4].set_title("Inferred "+"Pe\n")
 
     # Add labels for the rows not using the y label
