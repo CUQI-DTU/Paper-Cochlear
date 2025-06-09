@@ -1825,7 +1825,7 @@ def plot_v3_fig1( data_diff_list, data_adv_list):
 
 def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
     # fig_v = "I" or "II" or "III"
-    misfit_info = "case name, data vs. diffusion only, data vs. advection-diffusion, data vs. zero advection and constant diffusion, D_bar, a\n"            
+    misfit_info = "case name, data vs. diffusion only, data vs. advection-diffusion, data vs. zero advection and constant diffusion, D_bar, a, peclet\n"            
     # Create a figure with 10 rows and 3 columns. First column is for the
     # data, second column is for the prediction from the diffusion model,
     # and the third column is for the prediction from the advection model.
@@ -2017,15 +2017,19 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
             A_mistfit = create_A(data_diff_list[i]) 
             #_ = A_mistfit(np.ones(21)*420, is_par=False)
             D_bar = np.average(data_diff_list[i]["x_samples"].funvals.mean())
+            D_bar_adv = np.average(data_adv_list[i]["x_samples"].funvals.mean()[:-1])
             _ = A_mistfit(np.ones(21)*D_bar, is_par=False)
             non_grad_mean_recon_data_const = A_mistfit.pde._solution_obs 
             real_data_reshaped = real_data.reshape(len(real_locations), len(real_times))
-            misfit_info += data_diff_list[i]['experiment_par'].animal + '-' + str(data_diff_list[i]['experiment_par'].ear) + ', ' \
+            a_mean = data_adv_list[i]["x_samples"].funvals.mean()[-1]
+            ear_str = 'left  ' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
+            misfit_info += "mouse"+data_diff_list[i]['experiment_par'].animal[1] + '-' + ear_str + ', ' \
             + str(np.linalg.norm(non_grad_mean_recon_data_diffu-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) + ', ' \
             + str(np.linalg.norm(non_grad_mean_recon_data_adv-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) + ', ' \
             + str(np.linalg.norm(non_grad_mean_recon_data_const-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) +', '\
             + str(D_bar) + ', ' \
-            + str(data_adv_list[i]["x_samples"].funvals.mean()[-1]) + '\n'
+            + str(a_mean) + ', '\
+            + str(peclet_number(a=a_mean, d=D_bar_adv, L=real_locations[-1])) + '\n' 
             # Plot the difference between the advection and the diffusion model
             #---
         aspect = 1.2 * (x_max - x_min) / (y_max - y_min)
@@ -2094,7 +2098,7 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
 
 def plot_v3_fig1_b( data_diff_list, data_adv_list, fig_v="I", plot_type='over_time', colormap=None, y_log=False, y_min=0, y_max=5750):
     # fig_v = "I" or "II" or "III"
-                
+
     # Create a figure with 10 rows and 3 columns. First column is for the
     # data, second column is for the prediction from the diffusion model,
     # and the third column is for the prediction from the advection model.
