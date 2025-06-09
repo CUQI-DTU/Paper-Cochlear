@@ -788,7 +788,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
         color = colormap(np.linspace(0, 1, no_colors))
     if plot_type == 'over_time':
 
-        legends = ["{}".format(int(obs))+ " ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
+        legends = ["{}".format(int(obs))+ u" (\u03bcm)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.plot(times/60, data[i,:],  color=color[i%len(color)],marker=marker, linestyle=linestyle, clip_on=clip_on)[0])
@@ -828,7 +828,7 @@ def plot_time_series(times, locations, data, plot_legend=True, plot_type='over_t
             raise Exception('plot_against must be provided when plot_type is "against_data"')
         if len(plot_against) != len(data):
             raise Exception('plot_against must have the same length as data')
-        legends = ["{}".format(int(obs))+" ("+r"$\mu\mathrm{m}$"+")" for obs in locations]
+        legends = ["{}".format(int(obs))+u" (\u03bcm)" for obs in locations]
         lines = []
         for i in range(len(locations)):
             lines.append(plt.scatter(plot_against[i,:], data[i,:],  color=color[i%len(color)],marker=marker, clip_on=clip_on))
@@ -1625,7 +1625,8 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         # for i != 0, plot the prior and posterior of the advection parameter
         if i == 3:
             plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_exact[0]], ['mean',  '68% CI ', 'mean', '68% CI', 'exact'], loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+            #plt.xlabel("Location ("""+r"$\mu\mathrm{m}$"+")")
+            plt.xlabel("Location ("+u"\u03bcm"+")")
         else:
             plt.xlabel("")
             # ticks off
@@ -1663,7 +1664,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.xlim(v_min, v_max)
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
+            plt.xlabel(r"$a$"+u" (\u03bcm/sec.)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1682,7 +1683,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
             pass
             ax2.tick_params(direction="in", pad=0, colors='blue')
             # add text insted of label
-            plt.text(1.7, 0.85, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+            plt.text(1.7, 0.85, r"$Q$"+"\n(nl/min.)", ha='center', va='center', color='blue') #transform=ax2.transAxes
 
         
         elif i > 1:
@@ -1714,7 +1715,7 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
         plt.axvline(true_s, color="r", linestyle="--", label="exact")
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
+            plt.xlabel(r"$\sigma_\mathrm{noise}$"+r" (for $c$ gradient)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1771,9 +1772,9 @@ def plot_control_case_v2(data_list, plot_type='over_time', colormap=None, d_y_co
 
     # Add labels for the columns:
     axs[0, 0].set_title("Prediction\n")
-    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n")
-    axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)")
-    axs[0, 3].set_title("Inferred "+r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)\n ")
+    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+u" (\u03bcm"+r"$^2$"+"/sec.)\n")
+    axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n"+r" (for $c$ gradient)")
+    axs[0, 3].set_title("Inferred "+r"$a$"+u" (\u03bcm/sec.)\n ")
     axs[0, 4].set_title("Inferred "+"Pe\n")
 
     # Add labels for the rows not using the y label
@@ -1824,7 +1825,7 @@ def plot_v3_fig1( data_diff_list, data_adv_list):
 
 def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
     # fig_v = "I" or "II" or "III"
-                
+    misfit_info = "case name, data vs. diffusion only, data vs. advection-diffusion, data vs. zero advection and constant diffusion, D_bar, a, peclet\n"            
     # Create a figure with 10 rows and 3 columns. First column is for the
     # data, second column is for the prediction from the diffusion model,
     # and the third column is for the prediction from the advection model.
@@ -1922,7 +1923,7 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
             plt.legend(lines, legends,
                         fontsize=SMALL_SIZE, frameon=False, ncol=1,
                         columnspacing=0.1, handletextpad=0.1, handlelength=0.5,
-                        loc='upper right',
+                        loc='upper right', labelspacing=0.75,
                         bbox_to_anchor=(0.97, 1.07),  mode="expand")
             #---
             # Plot the prediction from the advection model
@@ -2008,10 +2009,27 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
                 if i == 0:
                     plt.title("Advection-diffusion\nmodel prediction\n(plotted over location)")
                     #("Diffusion-advection\n model prediction")
-                plt.text(260, 3750, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+r"$\mu\mathrm{m}$"+"/sec.)", fontsize=8, horizontalalignment='center')
+                plt.text(260, 3750, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+u"\u03bcm"+"/sec.)", fontsize=8, horizontalalignment='center')
             except:
                 pass
-
+            
+            # Fill in misfit info
+            A_mistfit = create_A(data_diff_list[i]) 
+            #_ = A_mistfit(np.ones(21)*420, is_par=False)
+            D_bar = np.average(data_diff_list[i]["x_samples"].funvals.mean())
+            D_bar_adv = np.average(data_adv_list[i]["x_samples"].funvals.mean()[:-1])
+            _ = A_mistfit(np.ones(21)*D_bar, is_par=False)
+            non_grad_mean_recon_data_const = A_mistfit.pde._solution_obs 
+            real_data_reshaped = real_data.reshape(len(real_locations), len(real_times))
+            a_mean = data_adv_list[i]["x_samples"].funvals.mean()[-1]
+            ear_str = 'left  ' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
+            misfit_info += "mouse"+data_diff_list[i]['experiment_par'].animal[1] + '-' + ear_str + ', ' \
+            + str(np.linalg.norm(non_grad_mean_recon_data_diffu-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) + ', ' \
+            + str(np.linalg.norm(non_grad_mean_recon_data_adv-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) + ', ' \
+            + str(np.linalg.norm(non_grad_mean_recon_data_const-real_data_reshaped)/np.linalg.norm(real_data_reshaped)) +', '\
+            + str(D_bar) + ', ' \
+            + str(a_mean) + ', '\
+            + str(peclet_number(a=a_mean, d=D_bar_adv, L=real_locations[-1])) + '\n' 
             # Plot the difference between the advection and the diffusion model
             #---
         aspect = 1.2 * (x_max - x_min) / (y_max - y_min)
@@ -2057,7 +2075,7 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
                 #plt.xlabel('')
                 plt.gca().axes.get_xaxis().get_label().set_visible(False)
             else:
-                plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+                plt.xlabel("Location ("+u"\u03bcm"+")")
 
             plt.sca(axs_right[i, 1])
             plt.ylim(y_min, y_max)
@@ -2075,12 +2093,12 @@ def plot_v3_fig1_c( data_diff_list, data_adv_list, y_log=False, colormaps=None):
                 plt.gca().axes.get_xaxis().get_label().set_visible(False)
 
             else:
-                plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
-            
+                plt.xlabel("Location ("+u"\u03bcm"+")")
+    return misfit_info        
 
 def plot_v3_fig1_b( data_diff_list, data_adv_list, fig_v="I", plot_type='over_time', colormap=None, y_log=False, y_min=0, y_max=5750):
     # fig_v = "I" or "II" or "III"
-                
+
     # Create a figure with 10 rows and 3 columns. First column is for the
     # data, second column is for the prediction from the diffusion model,
     # and the third column is for the prediction from the advection model.
@@ -2530,7 +2548,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         legend_x = 0.5
         legend_y = -.5
         if i == num_cases-1:
-            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)"], loc="upper center", ncol=1, frameon=False)
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+"\u03bcm"+r"$^2$"+"/sec"+".)"], loc="upper center", ncol=1, frameon=False)
             print("legend_X", legend_x)
             plt.gca().legend_.set_bbox_to_anchor((legend_x, legend_y))
             #plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -1.7), ncol=4)
@@ -2557,7 +2575,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
         plt.xlim(0, loc_max)
         if i==num_cases-1:
-            plt.xlabel(r"Location ($\mu\mathrm{m}$)")
+            plt.xlabel(u"Location (\u03bcm)")
         else:
             plt.xlabel("")
             # keep ticks but remove ticks labels for x 
@@ -2601,13 +2619,13 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
                 pass
                 ax2.tick_params(direction="in", pad=1, colors='blue')
                 # add text insted of label
-                plt.text(-1.45, 0.8, r"$Q$"+"\n(nl/min)", ha='center', va='center', color='blue') #transform=ax2.transAxes
+                plt.text(-1.45, 0.8, r"$Q$"+"\n(nl/min.)", ha='center', va='center', color='blue') #transform=ax2.transAxes
 
             else:
                 ax2.tick_params(labeltop=False, direction="in", colors='blue')
 
             if i==num_cases-1:
-                plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
+                plt.xlabel(r"$a$"+u" (\u03bcm/sec.)")
             else:
                 plt.xlabel("")
                 # keep ticks but remove ticks labels for x 
@@ -2630,7 +2648,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
 
             #plt.legend()
             if i==num_cases-1:
-                plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
+                plt.xlabel(r"$\sigma_\mathrm{noise}$"+r" (for $c$ gradient)")
                 plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
             else:
                 plt.xlabel("")
@@ -2684,7 +2702,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             # stack advection and diffusion
             diff_adv = cuqi.samples.Samples(np.vstack(
                                     (samples_avg_diff, data_adv_list[i]['x_samples'].samples[-1,:])))
-            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)"])
+            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+u"\u03bcm"+"/sec.)"])
 
             # plot the correlation
             color_list = ['black']*num_cases
@@ -2726,7 +2744,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             plt.ylim(diff_min, diff_max)
     
             plt.xlim(0, loc_max)
-            plt.xlabel("Location ("+r"$\mu\mathrm{m}$"+")")
+            plt.xlabel("Location ("+u"\u03bcm"+")")
             plt.ylabel(r"$\boldsymbol{D}$")
             plt.gca().yaxis.set_label_coords(0.17, 0.9)
     
@@ -2741,7 +2759,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             l1 = plt.plot(x, kde(x), color=color_list[i],
                           label='posterior')
             plt.xlim(v_min, v_max)
-            plt.xlabel(r"$a$"+" ("+r"$\mu\mathrm{m}$"+"/sec.)")
+            plt.xlabel(r"$a$"+" ("+u"\u03bcm"+"/sec.)")
     
             plt.ylabel(r"$p(a)$")
             plt.gca().yaxis.set_label_coords(0.18, 0.5) 
@@ -2754,7 +2772,7 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
             x2 = np.linspace(v_min2, v_max2, 100)
             l1 = plt.plot(x2, kde_2(x2), color=color_list[i], label='posterior')
             plt.xlim(v_min2, v_max2)
-            plt.xlabel(r"$\sigma_\mathrm{noise}$"+" (signal gradient)")
+            plt.xlabel(r"$\sigma_\mathrm{noise}$"+r" (for $c$ gradient)")
     
             plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
             plt.gca().yaxis.set_label_coords(0.20, 0.5)
@@ -2790,9 +2808,9 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
     #fig.delaxes(axs[num_cases, 3])
 
     # Add labels for the columns:
-    axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+r"${\mu\mathrm{m}}^2/\mathrm{sec}$"+".)\n ")
-    axs_top[0, 1].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n (signal gradient)") # \rho()
-    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+r"$\mu\mathrm{m}$"+"/sec.)"+"",pad=17)
+    axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+u"\u03bcm"+r"$^2$"+"/sec.)\n ")
+    axs_top[0, 1].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n"+r" (for $c$ gradient)") # \rho()
+    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+u"\u03bcm"+"/sec.)"+"",pad=17)
     axs_top[0, 3].set_title("Inferred "+"Pe\n ")
     axs_top[0, 4].set_title("Correlation \nplot")
 
