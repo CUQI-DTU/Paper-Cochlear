@@ -30,8 +30,6 @@ from advection_diffusion_inference_utils import parse_commandline_args,\
     read_experiment_data,\
     Callback
 
-print('cuqi version:')
-print(cuqi.__version__)
 
 ## Set random seed for reproducibility
 np.random.seed(1)
@@ -96,32 +94,21 @@ cp_args.pixel_data = False
     diff_locations_all, real_data_diff_all, real_std_data_diff_all) = read_data_files(cp_args)
 # The left boundary condition is given by the data  
 real_bc_l = real_data.reshape([len(real_locations), len(real_times)])[0,:]
-print("real_bc_l (before)")
-print(real_bc_l)
 real_bc_l[real_bc_l<0] = 0
-print("real_bc_l (after)")
-print(real_bc_l)
+
 # The right boundary condition is given by the data (if rbc is not "zero")
 if args.rbc == 'fromData':
     raise Exception('Right boundary condition from data not supported')
 elif args.rbc == 'fromDataClip':
     real_bc_r = real_data.reshape([len(real_locations), len(real_times)])[-1,:]
-    print("real_bc_r (before)")
-    print(real_bc_r)
     real_bc_r[real_bc_r<0] = 0
-    print("real_bc_r (after)")
-    print(real_bc_r)
 
 else:
     real_bc_r = None
 
 if args.u0_from_data:
     real_u0 = real_data.reshape([len(real_locations), len(real_times)])[:,0]
-    print("real_u0 (before)")
-    print(real_u0)
     real_u0[real_u0<0] = 0
-    print("real_u0 (after)")
-    print(real_u0)
 
 # locations, including added locations that can be used in synthetic 
 # case only
@@ -209,7 +196,7 @@ x = create_prior_distribution(G_c, args.inference_type)
 #------------------------------------------------------------------------
 exact_x = None
 exact_data = None
-if args.data_type == 'syntheticFromDiffusion':
+if args.data_type == 'synthetic':
     temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
     PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
                                    n_grid, h, times, temp_inf_type, u0=u0) 
@@ -239,8 +226,6 @@ s_noise = set_the_noise_std(
         is_grad_data=args.data_grad, times=times, locations=locations, real_data_diff=real_data_diff,
         real_data_all=real_data_all, real_std_data_all=real_std_data_all, real_locations_all=real_locations_all)
 
-print('s_noise')
-print(s_noise)
 
 if args.sampler == 'NUTSWithGibbs':
     y = Gaussian(A(x), lambda s: 1/s, geometry=G_cont2D)
@@ -249,7 +234,7 @@ else:
 
 #%% STEP 14: Specify the data for the inference
 #----------------------------------------------
-if args.data_type == 'syntheticFromDiffusion':
+if args.data_type == 'synthetic':
     y_temp = deepcopy(y)
     y_temp.mean = exact_data
     if args.sampler == 'NUTSWithGibbs':
@@ -302,12 +287,6 @@ callback_obj = Callback(
 # time the sampling
 import time
 start_time = time.time()
-# print A
-print(A)
-# print A domain geometry
-print(A.domain_geometry)
-# print A range geometry
-print(A.range_geometry)
 
 callback = None
 if args.sampler_callback:
