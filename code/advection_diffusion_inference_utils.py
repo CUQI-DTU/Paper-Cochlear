@@ -10,7 +10,7 @@ from cuqi.sampler import MH, NUTS
 from cuqi.pde import TimeDependentLinearPDE
 from cuqi.model import PDEModel
 import matplotlib.pyplot as plt
-from .custom_distribution import MyDistribution
+from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
 from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     NUTS as NUTSNew,
@@ -18,6 +18,7 @@ from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
                                     MH as MHNew)
 import cuqi
 import time
+import os
 # choose Helvetica as the default font
 rc = {"font.family" : "Helvetica", 
       "mathtext.fontset" : "stix"}
@@ -31,9 +32,6 @@ except:
     sys.path.append('../../../../tools')
     import dill as pickle
 
-# Print dill version
-print('dill version: ', pickle.__version__)
-
 #Arg class
 class Args:
     def __init__(self):
@@ -43,7 +41,7 @@ class Args:
         self.sampler = 'MH'
         self.unknown_par_type = 'constant'
         self.unknown_par_value = [100.0]
-        self.data_type = 'syntheticFromDiffusion'
+        self.data_type = 'synthetic'
         self.inference_type = 'constant'
         self.Ns = 20
         self.Nb = 20
@@ -101,8 +99,7 @@ class Callback:
         except:
             return
 
-        if plot_anyway or sample_index % (sampler._Ns//10) == 0:
-            print('Sample index to be saved: ', sample_index)
+        if plot_anyway or (sample_index % (sampler._Ns//10) == 0 and sample_index > 4):
             self.sampler = sampler
             self.lapsed_time = time.time() - self._current_time
             self._current_time = time.time()
@@ -134,6 +131,9 @@ class Callback:
                                  times=self.times,
                                  lapsed_time=self.lapsed_time,
                                  sampler=self.sampler)
+            # suppress all plotting warnings temporarily
+            import warnings
+            warnings.filterwarnings("ignore", category=UserWarning)
 
             fig = plot_experiment(exact=self.exact_x,
                                   exact_data=self.exact_data,
@@ -152,7 +152,9 @@ class Callback:
 
             # Save figure
             tag = create_experiment_tag(self.args)
+            
             fig.savefig(self.dir_name+'/experiment_'+tag+'_idx'+str(sample_index)+'.png')
+            warnings.filterwarnings("default", category=UserWarning)
             
 
 
@@ -210,11 +212,9 @@ def parse_commandline_args(myargs):
                         help='Value of unknown parameter, diffusion coefficient, if unknown_par_type is constant, provide one value, if unknown_par_type is step, provide two values, if unknown_par_type is smooth, provide two values, if unknown_par_type is sampleMean, provide tag of the experiment concatenated with the directory name where the samples are stored, separated by @')
     parser.add_argument('-data_type', metavar='data_type', type=str,
                         choices=[
-                            'real', 'syntheticFromDiffusion', 'syntheticFromAdvectionDiffusion'],
+                            'real', 'synthetic'],
                         default=arg_obj.data_type,
                         help='Type of data, real or synthetic')
-    #TODO: syntheticFromAdvectionDiffusion is not used, however, syntheticDiffusion work for both
-    # cases. Maybe you need to combine the two cases in one.
     parser.add_argument('-inference_type', metavar='inference_type', type=str,
                         choices=[
                             'constant', 'heterogeneous', 'advection_diffusion'],
@@ -618,7 +618,10 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
     elif unknown_par_type.endswith('.npz'):
         # Read data from npz file
         print('Reading data from: ', unknown_par_type)
-        exact_x = np.load("synth_diff/"+unknown_par_type)['arr_0']
+        # get current file path
+        current_file_path = os.path.dirname(os.path.abspath(__file__))
+        # load the npz file
+        exact_x = np.load(current_file_path+"/../data/synth_diff/"+unknown_par_type)['arr_0']
         is_par = False
 
 
@@ -709,7 +712,7 @@ def set_the_noise_std(
         except:
             raise Exception('Noise level not supported')
         ## Noise standard deviation 
-        if data_type == 'syntheticFromDiffusion':
+        if data_type == 'synthetic':
             if is_grad_data:
                 raise Exception('Noise level not supported yet for gradient data and synthetic data')
             s_noise = noise_level \
@@ -1091,7 +1094,7 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
 
 
     # Plot trace
-    x_samples.plot_trace(trace_idx_list, axes=axesThird)
+    x_samples.plot_trace(trace_idx_list, axes=axesThird, tight_layout=False)
 
     # write lapse time, exact a , exact peclet number, and mean peclet number
     # in the last subfigure
