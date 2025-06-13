@@ -2552,7 +2552,6 @@ def plot_v3_fig2_II(data_diff_list, data_adv_list, data_diff_list_all, data_adv_
         legend_y = -.5
         if i == num_cases-1:
             plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+"\u03bcm"+r"$^2$"+"/sec"+".)"], loc="upper center", ncol=1, frameon=False)
-            print("legend_X", legend_x)
             plt.gca().legend_.set_bbox_to_anchor((legend_x, legend_y))
             #plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -1.7), ncol=4)
         else:
