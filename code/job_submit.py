@@ -23,7 +23,7 @@ def submit(jobid,cmd):
     strcmd += '#BSUB -o hpc/output/output_' + id + '.out\n'
     strcmd += '#BSUB -e hpc/error/error_' + id + '.err\n'
     strcmd += 'module load python3/3.10.2\n'
-    strcmd += 'source ../../../../BE_collab/bin/activate\n'
+    strcmd += 'source ../../BE_collab/bin/activate\n'
     strcmd += cmd
  
     jobscript = 'hpc/submit_'+ jobname + '.sh'

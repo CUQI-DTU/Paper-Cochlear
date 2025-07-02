@@ -37,7 +37,7 @@ for animal in all_animals_list:
         # Command to run the inference script
         command = command_function(animal, ear, inference_type)
         # Run the command
-        submit(command) # commented out to avoid running it automatically since it takes long time to run
+        submit(diffusion_tag, command) # commented out to avoid running it automatically since it takes long time to run
 
 
 # Advection-diffusion inference cases run
@@ -48,4 +48,4 @@ for animal in all_animals_list:
         # Command to run the inference script
         command = command_function(animal, ear, "advection_diffusion")
         # Run the command
-        submit(command) # commented out to avoid running it automatically since it takes long time to run
+        submit(advection_diffusion_tag, command) # commented out to avoid running it automatically since it takes long time to run
