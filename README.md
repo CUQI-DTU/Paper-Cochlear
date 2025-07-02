@@ -1,4 +1,4 @@
-# Collab-BrainEfflux
+# Paper-Cochlear
 
 This repository contains code for generating and visualizing the results presented in the paper "Cochlear aqueduct advection and diffusion inferred from computed tomography imaging with a Bayesian approach".
 
