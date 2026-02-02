@@ -1583,9 +1583,8 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
 
         # cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
         kde_1 = sps.gaussian_kde(1 / np.sqrt(s_samples.samples.flatten()))
-        kde_2 = sps.gaussian_kde(
-            1 / np.sqrt(data_list[i]["s_samples"].samples.flatten())
-        )
+        posterior_sigma_noise_samples = 1 / np.sqrt(data_list[i]["s_samples"].samples.flatten())
+        kde_2 = sps.gaussian_kde(posterior_sigma_noise_samples)
         x = np.linspace(v_min, v_max, 100)
         l1 = plt.plot(x, kde_1(x), color="blue", label="prior")
         l2 = plt.plot(x, kde_2(x), color="black", label="posterior")
@@ -1609,6 +1608,9 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
         plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
         plt.gca().yaxis.set_label_coords(0.17, 0.5)
 
+        # print the average inferred sigma noise
+        inferred_sigma_noise_mean = np.mean(posterior_sigma_noise_samples)
+        print("Inferred sigma noise mean: ", inferred_sigma_noise_mean)
 
         # plot peclet number
         plt.sca(axs[i, 4])
@@ -1674,7 +1676,7 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
     plt.text(row_l_x, row_l_y, "Advection-\ndiffusion\n" +r"$a="+str(data_list[3]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
 
-def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None):
+def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None, pad_text_insert=0, pad_row_label=0):
     # fig_v = "I" or "II" or "III"
     misfit_info = "case name, data vs. diffusion only, data vs. advection-diffusion, data vs. zero advection and constant diffusion, D_bar, a, peclet\n"            
     # Create a figure with 10 rows and 3 columns. First column is for the
@@ -1761,7 +1763,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
             ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
             row_l_x = -14
             row_l_y = 3000
-            plt.text(row_l_x, row_l_y, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+            plt.text(row_l_x, row_l_y+pad_row_label, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
             plt.ylabel(r"$\boldsymbol{c}$")
             plt.gca().yaxis.set_label_coords(0.1,0.5)
@@ -1860,7 +1862,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
                 if i == 0:
                     plt.title("Advection-diffusion\nmodel prediction\n(plotted over location)")
                     #("Diffusion-advection\n model prediction")
-                plt.text(260, 3750, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+u"\u03bcm"+"/s)", fontsize=8, horizontalalignment='center')
+                plt.text(260, 3750+pad_text_insert, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+u"\u03bcm"+"/s)", fontsize=8, horizontalalignment='center')
             except:
                 pass
             
@@ -1983,12 +1985,13 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
     fig =  plt.figure(figsize=(7, (num_cases+1)*(6.5/5)))
 
     if add_last_row:
-        subfigs = fig.subfigures(2, 1, height_ratios=[4, 1])
+        subfigs = fig.subfigures(2, 1, height_ratios=[num_cases, 1])
         axs_top = subfigs[0].subplots(num_cases, 5)
         # set hspace and wspace for the top subfigure
         subfigs[0].subplots_adjust(hspace=0.2, wspace=0.4, bottom=0.2)
                                    #, hspace=0.2, wspace=0.4)
         axs_bottom = subfigs[1].subplots(1, 5)# hspace=0.2, wspace=0.4)
+        subfigs[1].subplots_adjust(hspace=0.2, wspace=0.4, top=0.65, bottom=0.06)
         subfigs[1].delaxes(axs_bottom[-1])
     else:
         subfigs = fig.subfigures(1, 1)
