@@ -1098,7 +1098,7 @@ def plot_experiment(exact, exact_data, data, mean_recon_data,
     # write lapse time, exact a , exact peclet number, and mean peclet number
     # in the last subfigure
     axesLast[0].axis('off')
-    axesLast[0].text(0.1, 0.8, 'Lapse time: {:.2f} sec'.format(lapsed_time))
+    axesLast[0].text(0.1, 0.8, 'Lapse time: {:.2f} s'.format(lapsed_time))
     if experiment_par.true_a is not None:
         # print exact a
         axesLast[0].text(0.1, 0.65, 'Exact a: {:.2f}'.format(experiment_par.true_a))
@@ -1548,7 +1548,7 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
         plt.xlim(v_min, v_max)
         if i==3:
             plt.legend(loc="upper center", bbox_to_anchor=(legend_x, legend_y), ncol=1, frameon=False)
-            plt.xlabel(r"$a$"+u" (\u03bcm/sec.)")
+            plt.xlabel(r"$a$"+u" (\u03bcm/s)")
         else:
             plt.xlabel("")
             # ticks off
@@ -1583,9 +1583,8 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
 
         # cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
         kde_1 = sps.gaussian_kde(1 / np.sqrt(s_samples.samples.flatten()))
-        kde_2 = sps.gaussian_kde(
-            1 / np.sqrt(data_list[i]["s_samples"].samples.flatten())
-        )
+        posterior_sigma_noise_samples = 1 / np.sqrt(data_list[i]["s_samples"].samples.flatten())
+        kde_2 = sps.gaussian_kde(posterior_sigma_noise_samples)
         x = np.linspace(v_min, v_max, 100)
         l1 = plt.plot(x, kde_1(x), color="blue", label="prior")
         l2 = plt.plot(x, kde_2(x), color="black", label="posterior")
@@ -1609,6 +1608,9 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
         plt.ylabel(r"$p(\sigma_\mathrm{noise})$")
         plt.gca().yaxis.set_label_coords(0.17, 0.5)
 
+        # print the average inferred sigma noise
+        inferred_sigma_noise_mean = np.mean(posterior_sigma_noise_samples)
+        print("Inferred sigma noise mean: ", inferred_sigma_noise_mean)
 
         # plot peclet number
         plt.sca(axs[i, 4])
@@ -1656,9 +1658,9 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
 
     # Add labels for the columns:
     axs[0, 0].set_title("Prediction\n")
-    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+u" (\u03bcm"+r"$^2$"+"/sec.)\n")
+    axs[0, 1].set_title("Inferred "+r"$\boldsymbol{D}$"+u" (\u03bcm"+r"$^2$"+"/s)\n")
     axs[0, 2].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n"+r" (for $c$ gradient)")
-    axs[0, 3].set_title("Inferred "+r"$a$"+u" (\u03bcm/sec.)\n ")
+    axs[0, 3].set_title("Inferred "+r"$a$"+u" (\u03bcm/s)\n ")
     axs[0, 4].set_title("Inferred "+"Pe\n")
 
     # Add labels for the rows not using the y label
@@ -1674,7 +1676,7 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
     plt.text(row_l_x, row_l_y, "Advection-\ndiffusion\n" +r"$a="+str(data_list[3]["experiment_par"].true_a)+r"$", fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
 
-def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None):
+def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None, pad_text_insert=0, pad_row_label=0):
     # fig_v = "I" or "II" or "III"
     misfit_info = "case name, data vs. diffusion only, data vs. advection-diffusion, data vs. zero advection and constant diffusion, D_bar, a, peclet\n"            
     # Create a figure with 10 rows and 3 columns. First column is for the
@@ -1761,7 +1763,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
             ear_str = 'left' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
             row_l_x = -14
             row_l_y = 3000
-            plt.text(row_l_x, row_l_y, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
+            plt.text(row_l_x, row_l_y+pad_row_label, 'Mouse'+data_diff_list[i]['experiment_par'].animal[1]+', '+ear_str, fontsize=BIGGER_SIZE, rotation=90, va='center', ha='center')
 
             plt.ylabel(r"$\boldsymbol{c}$")
             plt.gca().yaxis.set_label_coords(0.1,0.5)
@@ -1860,7 +1862,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
                 if i == 0:
                     plt.title("Advection-diffusion\nmodel prediction\n(plotted over location)")
                     #("Diffusion-advection\n model prediction")
-                plt.text(260, 3750, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+u"\u03bcm"+"/sec.)", fontsize=8, horizontalalignment='center')
+                plt.text(260, 3750+pad_text_insert, r"mean $a=$"+"\n{:.2f}".format(data_adv_list[i]['x_samples'].funvals.mean()[-1])+"\n("+u"\u03bcm"+"/s)", fontsize=8, horizontalalignment='center')
             except:
                 pass
             
@@ -1983,12 +1985,13 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
     fig =  plt.figure(figsize=(7, (num_cases+1)*(6.5/5)))
 
     if add_last_row:
-        subfigs = fig.subfigures(2, 1, height_ratios=[4, 1])
+        subfigs = fig.subfigures(2, 1, height_ratios=[num_cases, 1])
         axs_top = subfigs[0].subplots(num_cases, 5)
         # set hspace and wspace for the top subfigure
         subfigs[0].subplots_adjust(hspace=0.2, wspace=0.4, bottom=0.2)
                                    #, hspace=0.2, wspace=0.4)
         axs_bottom = subfigs[1].subplots(1, 5)# hspace=0.2, wspace=0.4)
+        subfigs[1].subplots_adjust(hspace=0.2, wspace=0.4, top=0.65, bottom=0.06)
         subfigs[1].delaxes(axs_bottom[-1])
     else:
         subfigs = fig.subfigures(1, 1)
@@ -2026,7 +2029,7 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
         legend_x = 0.5
         legend_y = -.5
         if i == num_cases-1:
-            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+"\u03bcm"+r"$^2$"+"/sec"+".)"], loc="upper center", ncol=1, frameon=False)
+            plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2], l_ref[0]], ['mean (diffusion only)',  '68% CI (diffusion only)', 'mean (advection-diffusion)', '68% CI (advection-diffusion)', r'$\mathrm{D}_\mathrm{E}\approx 368$'+" ("+"\u03bcm"+r"$^2$"+"/s"+".)"], loc="upper center", ncol=1, frameon=False)
             plt.gca().legend_.set_bbox_to_anchor((legend_x, legend_y))
             #plt.legend([l_ci1[0], l_ci1[2], l_ci2[0], l_ci2[2]], ['mean (Diff.)',  '68% CI (Diff.)', 'mean (Adv.-Diff.)', '68% CI (Adv.-Diff.)'], loc='center left', bbox_to_anchor=(-.2, -1.7), ncol=4)
         else:
@@ -2102,7 +2105,7 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
                 ax2.tick_params(labeltop=False, direction="in", colors='blue')
 
             if i==num_cases-1:
-                plt.xlabel(r"$a$"+u" (\u03bcm/sec.)")
+                plt.xlabel(r"$a$"+u" (\u03bcm/s)")
             else:
                 plt.xlabel("")
                 # keep ticks but remove ticks labels for x 
@@ -2179,7 +2182,7 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
             # stack advection and diffusion
             diff_adv = cuqi.samples.Samples(np.vstack(
                                     (samples_avg_diff, data_adv_list[i]['x_samples'].samples[-1,:])))
-            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+u"\u03bcm"+"/sec.)"])
+            diff_adv.geometry =  cuqi.geometry.Discrete(['$c^2_\mathrm{avg}$', r"$a$"+" ("+u"\u03bcm"+"/s)"])
 
             # plot the correlation
             color_list = ['black']*num_cases
@@ -2236,7 +2239,7 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
             l1 = plt.plot(x, kde(x), color=color_list[i],
                           label='posterior')
             plt.xlim(v_min, v_max)
-            plt.xlabel(r"$a$"+" ("+u"\u03bcm"+"/sec.)")
+            plt.xlabel(r"$a$"+" ("+u"\u03bcm"+"/s)")
     
             plt.ylabel(r"$p(a)$")
             plt.gca().yaxis.set_label_coords(0.18, 0.5) 
@@ -2285,9 +2288,9 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
     #fig.delaxes(axs[num_cases, 3])
 
     # Add labels for the columns:
-    axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+u"\u03bcm"+r"$^2$"+"/sec.)\n ")
+    axs_top[0, 0].set_title("Inferred "+r"$\boldsymbol{D}$"+" ("+u"\u03bcm"+r"$^2$"+"/s)\n ")
     axs_top[0, 1].set_title("Inferred "+r"$\sigma_\mathrm{noise}$"+"\n"+r" (for $c$ gradient)") # \rho()
-    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+u"\u03bcm"+"/sec.)"+"",pad=17)
+    axs_top[0, 2].set_title("Inferred "+r"$a$" +" ("+u"\u03bcm"+"/s)"+"",pad=17)
     axs_top[0, 3].set_title("Inferred "+"Pe\n ")
     axs_top[0, 4].set_title("Correlation \nplot")
 
