@@ -2036,8 +2036,11 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
 
         # compute ESS min
         ESS_diff = np.min(data_diff_list[i]['x_samples'].compute_ess())
+                # write ess
+        print('ESS_diff (min): '+str(int(np.min(ESS_diff))) , 'ESS (mean): '+str(int(np.mean(ESS_diff))) , 'ESS (max): '+str(int(np.max(ESS_diff)))   )
         try:
             ESS_adv = np.min(data_adv_list[i]['x_samples'].compute_ess())
+            print('ESS_adv (min): '+str(int(np.min(ESS_adv))) , 'ESS (mean): '+str(int(np.mean(ESS_adv))) , 'ESS (max): '+str(int(np.max(ESS_adv)))   )
         except:
             ESS_adv=0
             pass
@@ -2118,11 +2121,19 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
             #    plt.title("Noise level inference")
                 
             #cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
-            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten())) 
-            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()))
+            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten()))
+            posterior_sigma_noise_samples_adv = 1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()) 
+            kde_2 = sps.gaussian_kde(posterior_sigma_noise_samples_adv)
             x2 = np.linspace(v_min2, v_max2, 100)
             l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
             l2 = plt.plot(x2, kde_2(x2), color='black', label='posterior')
+            
+            posterior_sigma_noise_samples_diff = 1/np.sqrt(data_diff_list[i]['s_samples'].samples.flatten()) 
+            inferred_sigma_noise_mean_diff = np.mean(posterior_sigma_noise_samples_diff)
+            print("Inferred sigma noise mean (diff): ", inferred_sigma_noise_mean_diff)
+
+            inferred_sigma_noise_mean_adv = np.mean(posterior_sigma_noise_samples_adv)
+            print("Inferred sigma noise mean (adv): ", inferred_sigma_noise_mean_adv)
 
             #plt.legend()
             if i==num_cases-1:
