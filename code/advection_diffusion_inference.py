@@ -11,7 +11,7 @@ import sys
 from copy import deepcopy
 from cuqi.distribution import Gaussian, JointDistribution
 from cuqi.geometry import Continuous2D
-from cuqi.pde import TimeDependentLinearPDE
+from cuqi.pde import TimeDependentLinearPDE, FD_spatial_gradient
 from cuqi.model import PDEModel
 from advection_diffusion_inference_utils import parse_commandline_args,\
     read_data_files,\
@@ -71,8 +71,7 @@ print(args)
 
 if args.pixel_data:
     args.num_CA = 19
-if args.sampler == 'NUTSWithGibbs':
-    args.NUTS_kwargs["enable_FD"] = True
+
 
 # create a tag from the parameters of the experiment
 tag = create_experiment_tag(args)
@@ -169,13 +168,14 @@ PDE_form = create_PDE_form(real_bc_l, real_bc_r,
                            u0=u0)
 # STEP 8: Create the CUQIpy PDE object
 #-------------------------------------
+observation_map = FD_spatial_gradient if args.data_grad else None
 PDE = TimeDependentLinearPDE(PDE_form,
                              tau,
                              grid_sol=grid,
                              method='backward_euler', 
                              grid_obs=locations,
                              time_obs=times,
-                             data_grad=args.data_grad) 
+                             observation_map=observation_map) 
 
 # STEP 9: Create the range geometry
 #----------------------------------
@@ -200,13 +200,14 @@ if args.data_type == 'synthetic':
     temp_inf_type = args.inference_type if args.inference_type != 'constant' else 'heterogeneous'
     PDE_form_var_diff = create_PDE_form(real_bc_l, real_bc_r, grid, grid_c, grid_c_fine,
                                    n_grid, h, times, temp_inf_type, u0=u0) 
+    observation_map = FD_spatial_gradient if args.data_grad else None
     PDE_var_diff = TimeDependentLinearPDE(PDE_form_var_diff,
                                           tau,
                                           grid_sol=grid,
                                           method='backward_euler', 
                                           grid_obs=locations,
                                           time_obs=times,
-                                          data_grad=args.data_grad) 
+                                          observation_map=observation_map) 
     G_c_var = create_domain_geometry(grid_c, temp_inf_type)    
     A_var_diff = PDEModel(
         PDE_var_diff, range_geometry=G_cont2D, domain_geometry=G_c_var)
@@ -302,7 +303,7 @@ lapsed_time = time.time() - start_time
 x_samples = samples["x"] if args.sampler == 'NUTSWithGibbs' else samples
 s_samples = samples["s"] if args.sampler == 'NUTSWithGibbs' else None
 
-callback_obj(sampler=my_sampler, sample_index=None, s_samples=s_samples, plot_anyway=True)
+callback_obj(sampler=my_sampler, sample_index=None, num_of_samples=args.Ns, s_samples=s_samples, plot_anyway=True)
 
 # test reading the data
 data_dic = read_experiment_data(parent_dir, tag)

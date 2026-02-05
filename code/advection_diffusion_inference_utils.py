@@ -6,16 +6,15 @@ import scipy.stats as sps
 from cuqi.geometry import MappedGeometry, Discrete, Continuous1D, Continuous2D
 from cuqi.array import CUQIarray
 from cuqi.distribution import Gaussian, GMRF
-from cuqi.sampler import MH, NUTS
-from cuqi.pde import TimeDependentLinearPDE
+from cuqi.pde import TimeDependentLinearPDE, FD_spatial_gradient
 from cuqi.model import PDEModel
 import matplotlib.pyplot as plt
 from custom_distribution import MyDistribution
 from scipy.interpolate import interp1d
-from cuqi.experimental.mcmc import (HybridGibbs as HybridGibbsNew,
-                                    NUTS as NUTSNew,
-                                    Conjugate as ConjugateNew,
-                                    MH as MHNew)
+from cuqi.sampler import (HybridGibbs,
+                                    NUTS,
+                                    Conjugate,
+                                    MH)
 import cuqi
 import time
 import os
@@ -91,20 +90,17 @@ class Callback:
 
 
  
-    def __call__(self, sampler, sample_index, plot_anyway=False, s_samples=None):
+    def __call__(self, sampler, sample_index, num_of_samples, plot_anyway=False, s_samples=None):
         # if a 10th of the samples have been generated save the
         # data and plot the results
-        try:
-            sampler._Ns
-        except:
-            return
 
-        if plot_anyway or (sample_index % (sampler._Ns//10) == 0 and sample_index > 4):
+        chunk_size = max(1, num_of_samples//10)
+        if plot_anyway or (sample_index % chunk_size == 0 and sample_index > 4):
             self.sampler = sampler
             self.lapsed_time = time.time() - self._current_time
             self._current_time = time.time()
             # if sampler is Gibbs,
-            if isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
+            if isinstance(sampler, cuqi.sampler.HybridGibbs):
                 self.x_samples = sampler.get_samples()['x']
                 s_samples = sampler.get_samples()['s']
                 A = sampler.target._likelihoods[0].model
@@ -114,7 +110,7 @@ class Callback:
             G_cont2D = A.range_geometry
             mean_recon_data = \
             A(self.x_samples.funvals.mean(), is_par=False).reshape(G_cont2D.fun_shape)
-            non_grad_mean_recon_data = A.pde._solution_obs
+            non_grad_mean_recon_data = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
             self.mean_recon_data = mean_recon_data
             self.non_grad_mean_recon_data = non_grad_mean_recon_data.reshape((len(self.non_grad_locations), len(self.times)))
             
@@ -422,16 +418,16 @@ def create_PDE_form(real_bc_l, real_bc_r,
         np.diag(np.ones(n_grid-1), 1) ) / h**2
         
         ## PDE form (constant diffusion coefficient case)
-        def PDE_form(c, tau_current):
-            return (D_c_const(c), g_const(c, tau_current), initial_condition)
+        def PDE_form(c, t):
+            return (D_c_const(c), g_const(c, t), initial_condition)
         
     elif inference_type == 'heterogeneous':
         ## Source term (varying in space diffusion coefficient case)
-        def g_var(c, tau_current):
+        def g_var(c, t):
             f_array = np.zeros(n_grid)
-            f_array[0] = c[0]/h**2*np.interp(tau_current, times, real_bc_l)
+            f_array[0] = c[0]/h**2*np.interp(t, times, real_bc_l)
             if real_bc_r is not None:
-              f_array[-1] = c[-1]/h**2*np.interp(tau_current, times, real_bc_r)
+              f_array[-1] = c[-1]/h**2*np.interp(t, times, real_bc_r)
             return f_array
         
         ## Differential operator (varying in space diffusion coefficient case)
@@ -444,18 +440,18 @@ def create_PDE_form(real_bc_l, real_bc_r,
         D_c_var = lambda c: - Dx.T @ np.diag(c) @ Dx
         
         ## PDE form (varying in space diffusion coefficient case)
-        def PDE_form(c, tau_current):
+        def PDE_form(c, t):
             c = np.interp(grid_c_fine, grid_c, c)
-            return (D_c_var(c), g_var(c, tau_current), initial_condition)
+            return (D_c_var(c), g_var(c, t), initial_condition)
 
     elif inference_type == 'advection_diffusion':
         ## Source term (varying in space diffusion coefficient case)
-        def g_var(c, tau_current):
+        def g_var(c, t):
             f_array = np.zeros(n_grid)
-            u_0_mplus1 = np.interp(tau_current, times, real_bc_l) 
+            u_0_mplus1 = np.interp(t, times, real_bc_l) 
             f_array[0] += u_0_mplus1*c[0]/h**2 + c[-1]*u_0_mplus1/(2*h)
             if real_bc_r is not None:
-                u_L_m = np.interp(tau_current, times, real_bc_r)
+                u_L_m = np.interp(t, times, real_bc_r)
                 f_array[-1] += c[-2]/h**2*u_L_m - c[-1]*u_L_m/(2*h)
             return f_array
         
@@ -478,9 +474,9 @@ def create_PDE_form(real_bc_l, real_bc_r,
             return Mat
         
         ## PDE form (varying in space diffusion coefficient case)
-        def PDE_form(x, tau_current):
+        def PDE_form(x, t):
             c = np.interp(grid_c_fine, grid_c, x[:-1])
-            return (D_c_var(c) - DA_a(x[-1]), g_var(x, tau_current), initial_condition)   
+            return (D_c_var(c) - DA_a(x[-1]), g_var(x, t), initial_condition)   
 
     return PDE_form
 
@@ -630,7 +626,7 @@ def create_exact_solution_and_data(A, unknown_par_type, unknown_par_value, a=Non
         exact_x = np.append(exact_x, a)
     exact_x = CUQIarray(exact_x, geometry=x_geom, is_par=is_par)
     exact_data = A(exact_x)
-    exact_nongrad_data = A.pde._solution_obs
+    exact_nongrad_data = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
     return exact_x, exact_data, exact_nongrad_data
 
 
@@ -743,7 +739,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
         x0[-1] = 0
 
     if sampler == 'MH':
-        my_sampler = MHNew(posterior, scale=10,
+        my_sampler = MH(posterior, scale=10,
                            initial_point=x0,
                            callback=callback)
         my_sampler.warmup(Nb)
@@ -753,15 +749,16 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
     elif sampler == 'NUTS':
         posterior.enable_FD()
         NUTS_kwargs = args.NUTS_kwargs
-        my_sampler = NUTSNew(posterior, initial_point=x0, **NUTS_kwargs, callback=callback)
+        my_sampler = NUTS(posterior, initial_point=x0, **NUTS_kwargs, callback=callback)
         my_sampler.warmup(Nb)
         my_sampler.sample(Ns)
         posterior_samples = my_sampler.get_samples()
         posterior_samples_burnthin = posterior_samples
     elif sampler == 'NUTSWithGibbs':
+        posterior.enable_FD()
         sampling_strategy = {
-            "x" : NUTSNew(initial_point=x0, **args.NUTS_kwargs),
-            "s" : ConjugateNew()
+            "x" : NUTS(initial_point=x0, **args.NUTS_kwargs),
+            "s" : Conjugate()
         }
         
         # Here we do 1 internal steps with NUTS for each Gibbs step
@@ -770,7 +767,7 @@ def sample_the_posterior(sampler, posterior, G_c, args, callback=None):
             "s" : 1
         }
         
-        my_sampler = HybridGibbsNew(posterior, sampling_strategy, num_sampling_steps, callback=callback)
+        my_sampler = HybridGibbs(posterior, sampling_strategy, num_sampling_steps, callback=callback)
         my_sampler.warmup(Nb)
         my_sampler.sample(Ns)
         posterior_samples = my_sampler.get_samples()
@@ -908,14 +905,14 @@ def save_experiment_data(dir_name, exact, exact_data, data, mean_recon_data,
                  'num_tree_node_list': None,
                  'epsilon_list': None}
     # if sampler is NUTs, save the number of tree nodes
-    if isinstance(sampler, cuqi.experimental.mcmc.NUTS):
+    if isinstance(sampler, cuqi.sampler.NUTS):
         data_dict['num_tree_node_list'] = sampler.num_tree_node_list
         data_dict['epsilon_list'] = sampler.epsilon_list
     
     # if sampler is HybridGibbs, save the number of tree nodes if the
     # underlying sampler is NUTS
-    elif isinstance(sampler, cuqi.experimental.mcmc.HybridGibbs):
-        if isinstance(sampler.samplers['x'], cuqi.experimental.mcmc.NUTS):
+    elif isinstance(sampler, cuqi.sampler.HybridGibbs):
+        if isinstance(sampler.samplers['x'], cuqi.sampler.NUTS):
             data_dict['num_tree_node_list'] = sampler.samplers['x'].num_tree_node_list
             data_dict['epsilon_list'] = sampler.samplers['x'].epsilon_list
 
@@ -1357,13 +1354,14 @@ def create_A(data_diff):
                                u0=u0)
     # STEP 8: Create the CUQIpy PDE object
     #-------------------------------------
+    observation_map = FD_spatial_gradient if args.data_grad else None
     PDE = TimeDependentLinearPDE(PDE_form,
                                  tau,
                                  grid_sol=grid,
                                  method='backward_euler', 
                                  grid_obs=locations,
                                  time_obs=times,
-                                 data_grad=args.data_grad) 
+                                 observation_map=observation_map) 
     
     # STEP 9: Create the range geometry
     #----------------------------------
@@ -1448,10 +1446,10 @@ def plot_control_case(data_list, plot_type='over_time', colormap=None, d_y_coor=
         # print(data_list[i].keys())
         noisy_grad_data = data_list[i]["data"]
         mean_recon_data = A(data_list[i]["x_samples"].funvals.mean(), is_par=False)
-        non_grad_mean_recon_data = A.pde._solution_obs
+        non_grad_mean_recon_data = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
 
         exact_data = A(data_list[i]["exact"], is_par=False)
-        non_grad_exact_data = A.pde._solution_obs
+        non_grad_exact_data = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
         # Plot the mean reconstruction data
         plt.sca(axs[i, 0])
         plot_legend = False
@@ -1747,7 +1745,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
             A = create_A(data_diff_list[i]) 
             mean_recon_data = \
                 A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
-            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+            non_grad_mean_recon_data_diffu = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
 
 
             plt.sca(axs_left[i, 0])
@@ -1785,7 +1783,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
                 A = create_A(data_adv_list[i])
                 mean_recon_data = \
                     A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
-                non_grad_mean_recon_data_adv = A.pde._solution_obs
+                non_grad_mean_recon_data_adv = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
 
                 plt.sca(axs_left[i, 1])
                 lines, legends = plot_time_series(real_times, real_locations,
@@ -1819,7 +1817,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
             A = create_A(data_diff_list[i]) 
             mean_recon_data = \
                 A(data_diff_list[i]["x_samples"].funvals.mean(), is_par=False)
-            non_grad_mean_recon_data_diffu = A.pde._solution_obs
+            non_grad_mean_recon_data_diffu = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
 
 
             plt.sca(axs_right[i, 0])
@@ -1848,7 +1846,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
                 A = create_A(data_adv_list[i])
                 mean_recon_data = \
                     A(data_adv_list[i]["x_samples"].funvals.mean(), is_par=False)
-                non_grad_mean_recon_data_adv = A.pde._solution_obs
+                non_grad_mean_recon_data_adv = A.pde.interpolate_on_observed_domain(A.pde.solve()[0])
 
                 plt.sca(axs_right[i, 1])
                 lines, legends = plot_time_series(real_times, real_locations,
@@ -1872,7 +1870,7 @@ def plot_misfit_real( data_diff_list, data_adv_list, y_log=False, colormaps=None
             D_bar = np.average(data_diff_list[i]["x_samples"].funvals.mean())
             D_bar_adv = np.average(data_adv_list[i]["x_samples"].funvals.mean()[:-1])
             _ = A_mistfit(np.ones(21)*D_bar, is_par=False)
-            non_grad_mean_recon_data_const = A_mistfit.pde._solution_obs 
+            non_grad_mean_recon_data_const = A_mistfit.pde.interpolate_on_observed_domain(A_mistfit.pde.solve()[0]) 
             real_data_reshaped = real_data.reshape(len(real_locations), len(real_times))
             a_mean = data_adv_list[i]["x_samples"].funvals.mean()[-1]
             ear_str = 'left  ' if data_diff_list[i]['experiment_par'].ear == 'l' else 'right'
@@ -2038,8 +2036,11 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
 
         # compute ESS min
         ESS_diff = np.min(data_diff_list[i]['x_samples'].compute_ess())
+                # write ess
+        print('ESS_diff (min): '+str(int(np.min(ESS_diff))) , 'ESS (mean): '+str(int(np.mean(ESS_diff))) , 'ESS (max): '+str(int(np.max(ESS_diff)))   )
         try:
             ESS_adv = np.min(data_adv_list[i]['x_samples'].compute_ess())
+            print('ESS_adv (min): '+str(int(np.min(ESS_adv))) , 'ESS (mean): '+str(int(np.mean(ESS_adv))) , 'ESS (max): '+str(int(np.max(ESS_adv)))   )
         except:
             ESS_adv=0
             pass
@@ -2120,11 +2121,19 @@ def plot_inference_real(data_diff_list, data_adv_list, data_diff_list_all, data_
             #    plt.title("Noise level inference")
                 
             #cuqi.utilities.plot_1D_density(s, v_min=v_min, v_max=v_max, color='b',label='prior')
-            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten())) 
-            kde_2 = sps.gaussian_kde(1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()))
+            kde_1 = sps.gaussian_kde(1/np.sqrt(s_samples.samples.flatten()))
+            posterior_sigma_noise_samples_adv = 1/np.sqrt(data_adv_list[i]['s_samples'].samples.flatten()) 
+            kde_2 = sps.gaussian_kde(posterior_sigma_noise_samples_adv)
             x2 = np.linspace(v_min2, v_max2, 100)
             l1 = plt.plot(x2, kde_1(x2), color='blue', label='prior')
             l2 = plt.plot(x2, kde_2(x2), color='black', label='posterior')
+            
+            posterior_sigma_noise_samples_diff = 1/np.sqrt(data_diff_list[i]['s_samples'].samples.flatten()) 
+            inferred_sigma_noise_mean_diff = np.mean(posterior_sigma_noise_samples_diff)
+            print("Inferred sigma noise mean (diff): ", inferred_sigma_noise_mean_diff)
+
+            inferred_sigma_noise_mean_adv = np.mean(posterior_sigma_noise_samples_adv)
+            print("Inferred sigma noise mean (adv): ", inferred_sigma_noise_mean_adv)
 
             #plt.legend()
             if i==num_cases-1:
